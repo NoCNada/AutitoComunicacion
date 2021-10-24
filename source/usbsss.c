@@ -73,11 +73,11 @@ const char ANS_CWQAP[]={"AT+CWQAP\r\n\r\nOK\r\n"};
 const char ANS_CWMODE[]={"AT+CWMODE=3\r\n\r\nOK\r\n"};
 //Respuesta CWJAP
 const char ANS_CWJAP[]={'A','T','+','C','W','J','A','P','=','"','M','I','C','R','O','S','"',',','"','m','i','c','r','o','s','1','2','3','4','5','6','7',
-						'"',',','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
+						'"','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
 						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
 
 const char ANS_CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o','"',',','"','e','s','s','6','-','8','y','i','v','-','0','p','w','t',
-						'"',',','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
+						'"','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
 						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
 
 //Respuesta CIPMUX
@@ -163,9 +163,10 @@ typedef union {
 // Variables Globales
 volatile _sFlag flag1;
 _sWork PWM1, PWM2;
-uint8_t statusAT = 0, readyToSend = 1;
+uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP, timeout2 = 0;
+char espIP[13];
 uint8_t o_recibe = 0, k_recibe = 0, lastcommand = 1,sizecommand=6;
-
+uint8_t coincidencias = 0, statusCIFSR = 0;
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -199,10 +200,6 @@ int main(void) {
         espRx.iR=0;
         espTx.iW=0;
         espTx.iR=0;
-        espTx.buf[espTx.iW++] = 'A';
-        espTx.buf[espTx.iW++] = 'T';
-        espTx.buf[espTx.iW++] = 0xD;
-        espTx.buf[espTx.iW++] = 0xA;
     //PRINTF("Hello World\n");
 
     /* Force the counter to be placed into memory. */
@@ -215,11 +212,17 @@ int main(void) {
     	USB_DeviceInterface0CicVcomTask();
     	BanderasComandos();
 
+    	switch(statusESP){
+			case 0:
+				initESP();
+			break;
+    	}
+
     	if (ringRx.iW != ringRx.iR) {
     		LeerCabecera(ringRx.iW);
 
     	}
-    	if(espRx.iW != espRx.iR){
+    	if((espRx.iW != espRx.iR) && (!timeout2)){
     		DecoEsp();
     		//espRx.iR++;
     	}
@@ -235,35 +238,38 @@ int main(void) {
     return 0 ;
 }
 
-void initEsp(void){
+void initESP(void){
 	if(readyToSend)
 		switch(statusAT){
 			case 0:
 				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
 				espTx.iW += 13;
-				//timeout
+				timeout2 = 15;
 				readyToSend = 0;
 			break;
 			case 1:
 				memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
 				espTx.iW += 34;
-				//timeout
+				timeout2 = 30;
 				readyToSend = 0;
 			break;
 			case 2:
 				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
 				espTx.iW += 13;
-				//timeout
+				timeout2 = 20;
 				readyToSend = 0;
 			break;
 			case 3:
+				memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
+				espTx.iW += 10;
+				timeout2 = 15;
+				readyToSend = 0;
 			break;
 
 		}
 }
 
 void DecoEsp(void){
-	static uint8_t coincidencias = 0;
 
 	switch(statusAT){
 	case 0:
@@ -280,7 +286,7 @@ void DecoEsp(void){
 	case 1:
 		if(espRx.buf[espRx.iR]==ANS_CWJAP2[coincidencias]){
 			coincidencias++;
-			if(coincidencias == 69){
+			if(coincidencias == 68){
 				statusAT++;
 				coincidencias = 0;
 				readyToSend = 1;
@@ -296,6 +302,54 @@ void DecoEsp(void){
 				coincidencias = 0;
 				readyToSend = 1;
 			}
+		}
+		espRx.iR++;
+	break;
+	case 3:
+		switch(statusCIFSR){
+			case 0:
+				if(espRx.buf[espRx.iR]==CIFSR[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 10){
+						//statusAT++;
+						coincidencias = 0;
+						statusCIFSR++;
+						//readyToSend = 1;
+					}
+				}
+
+			break;
+			case 1:
+				if(espRx.buf[espRx.iR]==CIFSR_STAIP[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 13){
+						//statusAT++;
+						coincidencias = 0;
+						statusCIFSR++;
+						//readyToSend = 1;
+					}
+				}
+			break;
+			case 2:
+				espIP[coincidencias] = espRx.buf[espRx.iR];
+				coincidencias++;
+				lIp++;
+				if ((espRx.buf[espRx.iR] == '"') && (lIp>1)) {
+					coincidencias = 0;
+					statusCIFSR++;
+				}
+			break;
+			case 3:
+				if(espRx.buf[espRx.iR]==OK[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 6){
+						statusAT++;
+						coincidencias = 0;
+						statusCIFSR=0;
+						readyToSend = 1;
+					}
+				}
+			break;
 		}
 		espRx.iR++;
 	break;
@@ -511,3 +565,22 @@ void UART3_SERIAL_RX_TX_IRQHANDLER(void) {
   #endif
 }
 
+/* PIT0_IRQn interrupt handler */
+void PIT_CHANNEL_0_IRQHANDLER(void) {
+  uint32_t intStatus;
+  /* Reading all interrupt flags of status register */
+  intStatus = PIT_GetStatusFlags(PIT_PERIPHERAL, PIT_CHANNEL_0);
+  PIT_ClearStatusFlags(PIT_PERIPHERAL, PIT_CHANNEL_0, intStatus);
+
+  /* Place your code here */
+
+  if(timeout2){
+	  timeout2--;
+  }
+
+  /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
+     Store immediate overlapping exception return operation might vector to incorrect interrupt. */
+  #if defined __CORTEX_M && (__CORTEX_M == 4U)
+    __DSB();
+  #endif
+}

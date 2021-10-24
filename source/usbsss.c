@@ -46,6 +46,58 @@
 
 void UART3_SERIAL_RX_TX_IRQHANDLER(void);
 
+//Comando para conectarse a la red micros
+const char CWJAP[]={'A','T','+','C','W','J','A','P','=','"','M','I','C','R','O','S','"',',','"','m','i','c','r','o','s','1','2','3','4','5','6','7','"','\r','\n'};
+const char CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o','"',',','"','e','s','s','6','-','8','y','i','v','-','0','p','w','t','"','\r','\n'};
+//comando CIFSR Gets the local IP Adress -- Obtener la direccion ip local
+const char CIFSR[]={"AT+CIFSR\r\n"};
+//Comando CIPMUX Enable single connection -- Activa una sola coneccion
+const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
+//Comando CIPSTART Establish UDP Transmition -- Establece transmision UDP
+const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','2','"',',','3','0','0','1','5',',','3','0','2','0','\r','\n'};
+//CIPSTART 2
+const char CIPSTART2[]={",30015,3020\r\n"};
+//Comando CIPSEND Sends data -- Enviar datos
+const char CIPSEND[]={"AT+CIPSEND="};
+//Comando CIPCLOSE Close the UDP Connection -- Cierra la conexion UDP
+const char CIPCLOSE[]={"AT+CIPCLOSE\r\n"};
+//Comando CWQAP Disconnect from the AP -- Desconecta de la AP
+const char CWQAP[]={"AT+CWQAP\r\n"};
+//Comando CWMODE Sets the Wi-Fi mode (= 3 Station mode) -- Establece el modo Wi-Fi
+const char CWMODE[]={"AT+CWMODE=3\r\n"};
+
+//Respuesta CWQAP
+const char ANS_CWQAP[]={"AT+CWQAP\r\n\r\nOK\r\n"};
+//Respuesta CWMODE
+const char ANS_CWMODE[]={"AT+CWMODE=3\r\n\r\nOK\r\n"};
+//Respuesta CWJAP
+const char ANS_CWJAP[]={'A','T','+','C','W','J','A','P','=','"','M','I','C','R','O','S','"',',','"','m','i','c','r','o','s','1','2','3','4','5','6','7',
+						'"',',','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
+						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
+
+const char ANS_CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o','"',',','"','e','s','s','6','-','8','y','i','v','-','0','p','w','t',
+						'"',',','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
+						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
+
+//Respuesta CIPMUX
+const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
+//Respuesta CIPSTART
+const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','2','"',',','3','0','0','1','5',',','3','0','2','0','\r',
+		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
+//Respuesta CIPSEND
+const char ANS_CIPSEND[]={};
+const char AUTOMATIC_WIFI_CONNECTED[]={"WIFI CONNECTED\r\nWIFI GOT IP\r\n"};
+
+//OBTENER IP AUTITO
+const char CIFSR_STAIP[]={"+CIFSR:STAIP,"};
+//Respuesta OK
+const char OK[]={"\r\nOK\r\n"};
+//CIPSEND 4 BYTES
+const char CIPSEND_4BYTES[]={'A','T','+','C','I','P','S','E','N','D','=','4','\r','\n','\r','\n','O','K','\r','\n','>'};
+const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+
 /* TODO: insert other include files here. */
 
 /* TODO: insert other definitions and declarations here. */
@@ -111,6 +163,7 @@ typedef union {
 // Variables Globales
 volatile _sFlag flag1;
 _sWork PWM1, PWM2;
+uint8_t statusAT = 0, readyToSend = 1;
 uint8_t o_recibe = 0, k_recibe = 0, lastcommand = 1,sizecommand=6;
 
 
@@ -119,6 +172,7 @@ void RecibirDatos(uint8_t head);
 void EnviarDatos(uint8_t cmd);
 void ESP_UART3_SEND(void);
 void BanderasComandos(void);
+void initESP(void);
 void DecoEsp(void);
 
 
@@ -181,19 +235,70 @@ int main(void) {
     return 0 ;
 }
 
-void DecoEsp(void){
+void initEsp(void){
+	if(readyToSend)
+		switch(statusAT){
+			case 0:
+				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
+				espTx.iW += 13;
+				//timeout
+				readyToSend = 0;
+			break;
+			case 1:
+				memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
+				espTx.iW += 34;
+				//timeout
+				readyToSend = 0;
+			break;
+			case 2:
+				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
+				espTx.iW += 13;
+				//timeout
+				readyToSend = 0;
+			break;
+			case 3:
+			break;
 
-	switch(espRx.buf[espRx.iR+sizecommand]){
-		case 'O':
-			o_recibe = 1;
-			espRx.iR++;
-		break;
-		case 'K':
-			k_recibe = 1;
-			espRx.iR++;
-			espRx.iR += sizecommand+2;
-			lastcommand = 0;
-		break;
+		}
+}
+
+void DecoEsp(void){
+	static uint8_t coincidencias = 0;
+
+	switch(statusAT){
+	case 0:
+		if(espRx.buf[espRx.iR]==ANS_CWMODE[coincidencias]){
+			coincidencias++;
+			if(coincidencias == 19){
+				statusAT++;
+				coincidencias = 0;
+				readyToSend = 1;
+			}
+		}
+		espRx.iR++;
+	break;
+	case 1:
+		if(espRx.buf[espRx.iR]==ANS_CWJAP2[coincidencias]){
+			coincidencias++;
+			if(coincidencias == 69){
+				statusAT++;
+				coincidencias = 0;
+				readyToSend = 1;
+			}
+		}
+		espRx.iR++;
+	break;
+	case 2:
+		if(espRx.buf[espRx.iR]==ANS_CIPMUX[coincidencias]){
+			coincidencias++;
+			if(coincidencias == 13){
+				statusAT++;
+				coincidencias = 0;
+				readyToSend = 1;
+			}
+		}
+		espRx.iR++;
+	break;
 	}
 }
 

@@ -1,0 +1,11 @@
+D:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\CMSIS/core_cm4.h:1679:22:__NVIC_EnableIRQ	16	static
+D:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\CMSIS/core_cm4.h:1809:22:__NVIC_SetPriority	16	static
+D:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_common_arm.h:488:24:EnableIRQ	24	static
+D:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_sysmpu.h:268:20:SYSMPU_Enable	16	static
+../source/generated/usb_device_composite.c:339:6:USB0_IRQHandler	8	static
+../source/generated/usb_device_composite.c:353:13:USB_DeviceClockInit	4	static
+../source/generated/usb_device_composite.c:360:6:USB_DeviceIsrEnable	16	static
+../source/generated/usb_device_composite.c:420:21:USB_DeviceCallback	40	static
+../source/generated/usb_device_composite.c:663:14:USB_UpdateInterfaceSetting	24	static
+../source/generated/usb_device_composite.c:695:14:USB_DeviceApplicationInit	16	static
+../source/generated/usb_device_composite.c:851:6:USB_DeviceTasks	8	static

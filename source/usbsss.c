@@ -49,15 +49,20 @@ void UART3_SERIAL_RX_TX_IRQHANDLER(void);
 //Comando para conectarse a la red micros
 const char CWJAP[]={'A','T','+','C','W','J','A','P','=','"','M','I','C','R','O','S','"',',','"','m','i','c','r','o','s','1','2','3','4','5','6','7','"','\r','\n'};
 const char CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o','"',',','"','e','s','s','6','-','8','y','i','v','-','0','p','w','t','"','\r','\n'};
+//Comando CWJAP? Para consultar si esoy conectado o no
+const char CWJAP_PREGUNTA[]={"AT+CWJAP?\r\n"};//11
+
 //comando CIFSR Gets the local IP Adress -- Obtener la direccion ip local
 const char CIFSR[]={"AT+CIFSR\r\n"};
 //Comando CIPMUX Enable single connection -- Activa una sola coneccion
 const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
 //Comando CIPSTART Establish UDP Transmition -- Establece transmision UDP
 const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','2','"',',','3','0','0','1','5',',','3','0','2','0','\r','\n'};
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
+const char CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 //CIPSTART 2
-const char CIPSTART2[]={",30015,3020\r\n"};
+const char CIPSTART2222[]={",30015,3020\r\n"};
 //Comando CIPSEND Sends data -- Enviar datos
 const char CIPSEND[]={"AT+CIPSEND="};
 //Comando CIPCLOSE Close the UDP Connection -- Cierra la conexion UDP
@@ -66,9 +71,15 @@ const char CIPCLOSE[]={"AT+CIPCLOSE\r\n"};
 const char CWQAP[]={"AT+CWQAP\r\n"};
 //Comando CWMODE Sets the Wi-Fi mode (= 3 Station mode) -- Establece el modo Wi-Fi
 const char CWMODE[]={"AT+CWMODE=3\r\n"};
+//Comando CWLAP
+const char CWLAP[]={"AT+CWLAP\r\n"};
 
+
+//Respuesta CWLAP ANS_CWLAP
+const char ANS_CWLAP[]={"AT+CWLAP\r\n\r\n+CWLAP:\r\n"};
 //Respuesta CWQAP
 const char ANS_CWQAP[]={"AT+CWQAP\r\n\r\nOK\r\n"};
+const char ANS_CWQAP2[]={"AT+CWQAP\r\n\r\nOK\r\nWIFI DISCONNECT/r/n"};
 //Respuesta CWMODE
 const char ANS_CWMODE[]={"AT+CWMODE=3\r\n\r\nOK\r\n"};
 //Respuesta CWJAP
@@ -80,16 +91,36 @@ const char ANS_CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o'
 						'"','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
 						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
 
+//Respuesta CWJAP?
+const char ANS_CWJAP_PREGUNTA[] = {"AT+CWJAP?\r\nNo AP\r\n\r\nOK\r\n"};//24
+//const char ANS_CWJAP_PREGUNTA2[] = {'AT+CWJAP?\r\n+CWJAP:"Nuno"'};//24
 //Respuesta CIPMUX
 const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
 //Respuesta CIPSTART
 const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','2','"',',','3','0','0','1','5',',','3','0','2','0','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
+
+const char ANS_CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//61
+const char ANS_CIPSTART2_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//72
+
+//AT+CIPSTART="UDP","192.168.1.4",30015,3015/r/n
+//ALREADY CONNECTED/r/n/r/nERROR/r/n
+
+//Busy p...
+const char ANS_BUSY[]={"busy"};
+
 //Respuesta CIPSEND
 const char ANS_CIPSEND[]={};
 const char AUTOMATIC_WIFI_CONNECTED[]={"WIFI CONNECTED\r\nWIFI GOT IP\r\n"};
+//SSID
+const char SSIDNUNO[]={'"','N','u','n','o','"'};
 
+const char SSIDMICROS[]={'"','M','I','C','R','O','S','"'};
 //OBTENER IP AUTITO
 const char CIFSR_STAIP[]={"+CIFSR:STAIP,"};
 //Respuesta OK
@@ -97,6 +128,7 @@ const char OK[]={"\r\nOK\r\n"};
 //CIPSEND 4 BYTES
 const char CIPSEND_4BYTES[]={'A','T','+','C','I','P','S','E','N','D','=','4','\r','\n','\r','\n','O','K','\r','\n','>'};
 const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
 
 /* TODO: insert other include files here. */
 
@@ -120,7 +152,7 @@ uint8_t rxBuf[256], txBuf[256], rxEspBuf[256],txEspBuf[256];
 /* PIT0_IRQn interrupt handler */
 void PIT_CHANNEL_0_IRQHANDLER(void);
 void UART3_SERIAL_RX_TX_IRQHANDLER(void);
-
+void SysTick_Handler(void);
 
 // typedef
 typedef union{
@@ -155,18 +187,27 @@ typedef union {
 #define MOTORSSENT flag1.bit.b1 //Confirmacion recepcion comando motor
 #define MOTORONOFFSENT flag1.bit.b2 //Confirmacion recepcion motor on/off
 #define INITESP flag1.bit.b3 //iniciar ESP
+#define SSIDNuno flag1.bit.b4 //iniciar ESP
+#define SSIDMicros flag1.bit.b5 //iniciar ESP
+#define RESETESP flag1.bit.b6 //RESET ESP
+#define DESCONECTADO flag1.bit.b7 //RESET ESP
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
 #define MOTORSONOCMD 0xD2 // COMANDO ON/OFF MOTOR
 #define ALIVECMD 0xF0 // comando alive
 
+
+
 // Variables Globales
 volatile _sFlag flag1;
 _sWork PWM1, PWM2;
-uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP, timeout2 = 0;
-char espIP[13];
+uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP, timeout2 = 0,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
+char espIP[20],CIPSEND_NBYTES[30];
 uint8_t o_recibe = 0, k_recibe = 0, lastcommand = 1,sizecommand=6;
-uint8_t coincidencias = 0, statusCIFSR = 0;
+uint8_t coincidencias = 0, statusCIFSR = 0, recepcion = 0,coincidencias2 = 0,statusCWQAP = 0;
+uint32_t g_systickCounter;
+uint8_t test[256];
+uint8_t NADADEPRUEBAS = 1;
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -175,6 +216,23 @@ void ESP_UART3_SEND(void);
 void BanderasComandos(void);
 void initESP(void);
 void DecoEsp(void);
+void CommandUdp(uint8_t comando);
+void Delay_ms(uint32_t n);
+uint8_t BusyESP(uint8_t c);
+void resetESP(void);
+
+
+void SysTick_Handler(void){
+	if(g_systickCounter != 0U){
+		g_systickCounter--;
+	}
+}
+
+void Delay_ms(uint32_t n){
+	g_systickCounter = n;
+	while(g_systickCounter != 0U){
+	}
+}
 
 
 //str
@@ -201,7 +259,27 @@ int main(void) {
         espTx.iW=0;
         espTx.iR=0;
     //PRINTF("Hello World\n");
+    if(SysTick_Config(SystemCoreClock / 1000U)){
+    	while(1){
+    	}
+    }
 
+//    FTM_StopTimer(FTM0_PERIPHERAL);
+//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 3000;
+//    FTM0_PERIPHERAL->CONTROLS[1].CnV = 3999;
+//    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+//
+//    Delay_ms(2000);
+//
+//    FTM_StopTimer(FTM0_PERIPHERAL);
+//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
+//    FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+//    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+//    Delay_ms(10000);
+
+            /* Init output LED GPIO. */
+          //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
+         //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
@@ -211,12 +289,22 @@ int main(void) {
 
     	USB_DeviceInterface0CicVcomTask();
     	BanderasComandos();
+    	if(!timeoutESP){
+        	switch(statusESP){
+        		case 0:
+        			resetESP();
+        		break;
 
-    	switch(statusESP){
-			case 0:
-				initESP();
-			break;
+    			case 1:
+    				initESP();
+    			break;
+    			case 2:
+    				//lll
+    				CommandUdp(0xF0);
+    			break;
+        	}
     	}
+
 
     	if (ringRx.iW != ringRx.iR) {
     		LeerCabecera(ringRx.iW);
@@ -238,41 +326,235 @@ int main(void) {
     return 0 ;
 }
 
+void resetESP(void){
+	//GPIO_PortToggle(BOARD_LED_GPIO, 1u << BOARD_LED_GPIO_PIN);
+	if(!RESETESP){
+		GPIO_PortToggle(BOARD_RST_ESP_GPIO, 1u << BOARD_RST_ESP_PIN);
+		//GPIO_PortToggle(base, mask)
+		//GPIO_PinWrite(BOARD_RST_ESP_PORT, BOARD_RST_ESP_PIN, 0);
+		RESETESP = 1;
+		timeoutESP = 10;
+	}
+	else{
+		timeoutRead = 100;
+		timeoutESP = 100;
+		GPIO_PortToggle(BOARD_RST_ESP_GPIO, 1u << BOARD_RST_ESP_PIN);
+		RESETESP = 0;
+		statusESP++;
+	}
+
+}
+
+void CommandUdp(uint8_t comando){
+	if(readyToSend){
+		switch(comando){
+			case 0xF0:
+				if(parte1){
+					memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+					espTx.iW += 11;
+					memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+					espTx.iW += 3;
+				//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+				//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
+					memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+				//	parte1=0;
+					timeout2 = 30;
+				//	readyToSend = 0;
+				}
+				else {
+					memcpy(&espTx.buf[espTx.iW], "test", 4);
+					espTx.iW += 4;
+					memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					readyToSend = 0;
+					parte1=0;
+				//	timeout2 = 15;
+				}
+
+			break;
+		}
+		readyToSend = 0;
+	}
+
+}
+
 void initESP(void){
 	if(readyToSend)
 		switch(statusAT){
 			case 0:
-				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
-				espTx.iW += 13;
-				timeout2 = 15;
-				readyToSend = 0;
-			break;
-			case 1:
-				memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
-				espTx.iW += 34;
+				memcpy(&espTx.buf[espTx.iW], CWQAP,10);
+				espTx.iW += 10;
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
+			case 1:
+				if(NADADEPRUEBAS){
+					statusAT++;
+					SSIDNuno = 1;
+					SSIDMicros = 0;
+				}
+				else{
+					memcpy(&espTx.buf[espTx.iW], CWLAP,10);
+					espTx.iW += 10;
+					timeout2 = 200;
+					readyToSend = 0;
+				}
+
+			break;
 			case 2:
-				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
+				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
 				espTx.iW += 13;
-				timeout2 = 20;
+				timeout2 = 30;
 				readyToSend = 0;
 			break;
 			case 3:
-				memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
-				espTx.iW += 10;
-				timeout2 = 15;
+				if(SSIDNuno){
+					memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
+					espTx.iW += 34;
+					timeout2 = 100;
+					readyToSend = 0;
+				}
+				else{
+					if(SSIDMicros){
+						memcpy(&espTx.buf[espTx.iW], CWJAP, 35); //34 CASA 35 MICROS
+						espTx.iW += 35;
+						timeout2 = 100;
+						readyToSend = 0;
+					}
+
+				}
+
+			break;
+			case 4:
+				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
+				espTx.iW += 13;
+				timeout2 = 30;
 				readyToSend = 0;
 			break;
-
+			case 5:
+				memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
+				espTx.iW += 10;
+				timeout2 = 30;
+				readyToSend = 0;
+			break;
+			case 6:
+				if(SSIDNuno){
+					memcpy(&espTx.buf[espTx.iW], CIPSTART2,46);
+					espTx.iW += 46;
+					timeout2 = 50;
+					readyToSend = 0;
+				}
+				else{
+					if(SSIDMicros){
+						memcpy(&espTx.buf[espTx.iW], CIPSTART,44); //44 micros 46 casa
+						espTx.iW += 44;
+						timeout2 = 15;
+						readyToSend = 0;
+					}
+				}
+			break;
 		}
 }
 
-void DecoEsp(void){
+uint8_t BusyESP(uint8_t c){
+	static uint8_t epic = 0;
+	if(c==ANS_BUSY[epic]){
+		epic++;
+		if(epic == 4){
+			//statusAT++;
+			epic = 0;
+			return 1;
+		}
+	}
+	else{
+		return 0;
+	}
+}
 
+void DecoEsp(void){
+static uint8_t iii = 0;
 	switch(statusAT){
 	case 0:
+		if(espRx.buf[espRx.iR]==ANS_CWQAP[coincidencias]){
+			coincidencias++;
+			if(coincidencias == 15){
+				statusAT++;
+				coincidencias = 0;
+				readyToSend = 1;
+				DESCONECTADO = 1;
+			}
+		}
+		test[iii++] = espRx.buf[espRx.iR];
+		espRx.iR++;
+		if((espRx.iR==espRx.iW) && (!DESCONECTADO)){
+			coincidencias = 0;
+			DESCONECTADO = 0;
+			readyToSend=1;
+		}
+	break;
+	case 1:
+		if(NADADEPRUEBAS){
+			statusCWQAP=0;
+			statusAT++;
+			coincidencias = 0;
+			coincidencias2 = 0;
+			readyToSend=1;
+			SSIDNuno = 1;
+			SSIDMicros = 0;
+		}
+		else{
+			switch(statusCWQAP){
+					case 0:
+						if(espRx.buf[espRx.iR]==ANS_CWLAP[coincidencias]){
+							coincidencias++;
+							if(coincidencias == 21){
+								statusCWQAP++;
+								coincidencias = 0;
+								//readyToSend = 1;
+							}
+						}
+					break;
+					case 1:
+						if(espRx.buf[espRx.iR]==SSIDNUNO[coincidencias]){
+							coincidencias++;
+							if (coincidencias==6) {
+								//status
+								SSIDNuno=1;
+								statusCWQAP=0;
+								statusAT++;
+								coincidencias = 0;
+								coincidencias2 = 0;
+								readyToSend=1;
+							}
+						}
+						else {
+							if(espRx.buf[espRx.iR]==SSIDMICROS[coincidencias2]){
+								coincidencias2++;
+								if (coincidencias2==8) {
+									//status
+									statusCWQAP=0;
+									statusAT++;
+									SSIDMicros=1;
+									coincidencias2 = 0;
+									coincidencias = 0;
+									readyToSend=1;
+								}
+							}
+						}
+
+					break;
+					}
+		}
+
+		test[iii++] = espRx.buf[espRx.iR];
+		espRx.iR++;
+		if((espRx.iR==espRx.iW) && (!SSIDMicros && !SSIDNuno)){
+			coincidencias2 = 0;
+			statusCWQAP=0;
+			coincidencias = 0;
+			readyToSend=1;
+		}
+	break;
+	case 2:
 		if(espRx.buf[espRx.iR]==ANS_CWMODE[coincidencias]){
 			coincidencias++;
 			if(coincidencias == 19){
@@ -281,20 +563,36 @@ void DecoEsp(void){
 				readyToSend = 1;
 			}
 		}
+		test[iii++] = espRx.buf[espRx.iR];
 		espRx.iR++;
 	break;
-	case 1:
-		if(espRx.buf[espRx.iR]==ANS_CWJAP2[coincidencias]){
-			coincidencias++;
-			if(coincidencias == 68){
-				statusAT++;
-				coincidencias = 0;
-				readyToSend = 1;
+	case 3:
+		if(SSIDNuno){
+			if(espRx.buf[espRx.iR]==ANS_CWJAP2[coincidencias]){
+				coincidencias++;
+				if(coincidencias == 68){
+					statusAT++;
+					coincidencias = 0;
+					readyToSend = 1;
+				}
 			}
 		}
+		else{
+			if(SSIDMicros){
+				if(espRx.buf[espRx.iR]==ANS_CWJAP[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 69){
+						statusAT++;
+						coincidencias = 0;
+						readyToSend = 1;
+					}
+				}
+			}
+		}
+		test[iii++] = espRx.buf[espRx.iR];
 		espRx.iR++;
 	break;
-	case 2:
+	case 4:
 		if(espRx.buf[espRx.iR]==ANS_CIPMUX[coincidencias]){
 			coincidencias++;
 			if(coincidencias == 13){
@@ -305,7 +603,7 @@ void DecoEsp(void){
 		}
 		espRx.iR++;
 	break;
-	case 3:
+	case 5:
 		switch(statusCIFSR){
 			case 0:
 				if(espRx.buf[espRx.iR]==CIFSR[coincidencias]){
@@ -353,7 +651,81 @@ void DecoEsp(void){
 		}
 		espRx.iR++;
 	break;
+	case 6:
+		if(SSIDNuno){
+			if(espRx.buf[espRx.iR]==ANS_CIPSTART2[coincidencias]){
+				coincidencias++;
+				if(coincidencias == 61){
+					statusAT++;
+					statusESP++;
+					coincidencias = 0;
+					coincidencias2 = 0;
+					readyToSend = 1;
+				}
+			}
+			if(espRx.buf[espRx.iR]==ANS_CIPSTART2_ERROR[coincidencias2]){
+				coincidencias2++;
+				if(coincidencias2 == 72){
+					statusAT++;
+					statusESP++;
+					coincidencias = 0;
+					coincidencias2 = 0;
+					readyToSend = 1;
+				}
+			}
+		}
+		else{
+			if(SSIDMicros){
+				if(espRx.buf[espRx.iR]==ANS_CIPSTART[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 59){
+						statusAT++;
+						statusESP++;
+						coincidencias = 0;
+						readyToSend = 1;
+					}
+				}
+			}
+		}
+		espRx.iR++;
+	break;
+	case 7:
+		switch(recepcion){
+			case 0:
+				if(espRx.buf[espRx.iR]==CIPSEND_NBYTES[coincidencias]){
+					coincidencias++;
+					if(coincidencias == strlen(CIPSEND_NBYTES)){
+						//statusAT++;
+						recepcion++;
+						readyToSend = 1;
+						parte1 = 0;
+						//statusESP++;
+						coincidencias = 0;
+						//readyToSend = 1;
+					}
+				}
+				espRx.iR++;
+			break;
+			case 1:
+				if(espRx.buf[espRx.iR]==CIPSEND_NBYTES[coincidencias]){
+					coincidencias++;
+					if(coincidencias == strlen(CIPSEND_NBYTES)){
+						//statusAT++;
+						recepcion=0;
+						parte1 = 1;
+						readyToSend = 1;
+						//statusESP++;
+						coincidencias = 0;
+						//readyToSend = 1;
+					}
+				}
+				espRx.iR++;
+			break;
+		}
+		test[iii++] = espRx.buf[espRx.iR];
+	break;
 	}
+
 }
 
 void ESP_UART3_SEND(void){
@@ -553,7 +925,8 @@ void UART3_SERIAL_RX_TX_IRQHANDLER(void) {
   char value;
 
   value = UART_ReadByte(UART3);
-  espRx.buf[espRx.iW++] = value;
+  if(!timeoutRead)
+	  espRx.buf[espRx.iW++] = value;
 
   status = UART_ClearStatusFlags(UART3, intStatus);
 
@@ -573,9 +946,19 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
   PIT_ClearStatusFlags(PIT_PERIPHERAL, PIT_CHANNEL_0, intStatus);
 
   /* Place your code here */
+  if(timeoutESP){
+  	  timeoutESP--;
+  }
+
+  if(timeoutRead){
+    	  timeoutRead--;
+    }
 
   if(timeout2){
 	  timeout2--;
+  }
+  if(timeout3){
+	  timeout3--;
   }
 
   /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F

@@ -188,6 +188,146 @@ static void PIT_init(void) {
 }
 
 /***********************************************************************************************************************
+ * FTM0 initialization code
+ **********************************************************************************************************************/
+/* clang-format off */
+/* TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
+instance:
+- name: 'FTM0'
+- type: 'ftm'
+- mode: 'EdgeAligned'
+- custom_name_enabled: 'false'
+- type_id: 'ftm_a206ca22312775f3c8a462078188c129'
+- functional_group: 'BOARD_InitPeripherals'
+- peripheral: 'FTM0'
+- config_sets:
+  - ftm_main_config:
+    - ftm_config:
+      - clockSource: 'kFTM_SystemClock'
+      - clockSourceFreq: 'BOARD_BootClockVLPR'
+      - timerPrescaler: '1'
+      - timerOutputFrequency: '1.0 kHz'
+      - systemClockSource: 'BusInterfaceClock'
+      - systemClockSourceFreq: 'mirrored_value'
+      - faultMode: 'kFTM_Fault_Disable'
+      - inputFilterPeriod: '1'
+      - faultInputs:
+        - 0:
+          - enableFaultInput: 'false'
+          - faultLevelVal: 'low'
+          - useFaultFilter: 'false'
+        - 1:
+          - enableFaultInput: 'false'
+          - faultLevelVal: 'low'
+          - useFaultFilter: 'false'
+        - 2:
+          - enableFaultInput: 'false'
+          - faultLevelVal: 'low'
+          - useFaultFilter: 'false'
+        - 3:
+          - enableFaultInput: 'false'
+          - faultLevelVal: 'low'
+          - useFaultFilter: 'false'
+      - deadTimePrescale: 'kFTM_Deadtime_Prescale_1'
+      - deadTimePeriod: '0'
+      - pwmSyncMode: 'kFTM_SoftwareTrigger'
+      - reloadPoints: ''
+      - extTriggers: ''
+      - chnlInitState: ''
+      - chnlPolarity: ''
+      - bdmMode: 'kFTM_BdmMode_0'
+      - useGlobalTimeBase: 'false'
+    - timer_interrupts: ''
+    - enable_irq: 'false'
+    - ftm_interrupt:
+      - IRQn: 'FTM0_IRQn'
+      - enable_interrrupt: 'enabled'
+      - enable_priority: 'false'
+      - priority: '0'
+      - enable_custom_name: 'false'
+    - EnableTimerInInit: 'true'
+  - ftm_edge_aligned_mode:
+    - ftm_edge_aligned_channels_config:
+      - 0:
+        - channelId: 'PWM_1'
+        - edge_aligned_mode: 'kFTM_EdgeAlignedPwm'
+        - edge_aligned_pwm:
+          - chnlNumber: 'kFTM_Chnl_1'
+          - level: 'kFTM_HighTrue'
+          - dutyValueStr: '0'
+          - enable_chan_irq: 'false'
+      - 1:
+        - channelId: 'PWM_2'
+        - edge_aligned_mode: 'kFTM_EdgeAlignedPwm'
+        - edge_aligned_pwm:
+          - chnlNumber: 'kFTM_Chnl_2'
+          - level: 'kFTM_HighTrue'
+          - dutyValueStr: '0'
+          - enable_chan_irq: 'false'
+      - 2:
+        - channelId: 'PWM_3'
+        - edge_aligned_mode: 'kFTM_EdgeAlignedPwm'
+        - edge_aligned_pwm:
+          - chnlNumber: 'kFTM_Chnl_3'
+          - level: 'kFTM_HighTrue'
+          - dutyValueStr: '0'
+          - enable_chan_irq: 'false'
+      - 3:
+        - channelId: 'PWM_6'
+        - edge_aligned_mode: 'kFTM_EdgeAlignedPwm'
+        - edge_aligned_pwm:
+          - chnlNumber: 'kFTM_Chnl_6'
+          - level: 'kFTM_HighTrue'
+          - dutyValueStr: '0'
+          - enable_chan_irq: 'false'
+ * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
+/* clang-format on */
+const ftm_config_t FTM0_config = {
+  .prescale = kFTM_Prescale_Divide_1,
+  .faultMode = kFTM_Fault_Disable,
+  .faultFilterValue = 0,
+  .deadTimePrescale = kFTM_Deadtime_Prescale_1,
+  .deadTimeValue = 0,
+  .pwmSyncMode = kFTM_SoftwareTrigger,
+  .reloadPoints = 0,
+  .extTriggers = 0,
+  .chnlInitState = 0,
+  .chnlPolarity = 0,
+  .bdmMode = kFTM_BdmMode_0,
+  .useGlobalTimeBase = false
+};
+
+const ftm_chnl_pwm_config_param_t FTM0_pwmSignalParams[] = { 
+  {
+    .chnlNumber = kFTM_Chnl_1,
+    .level = kFTM_HighTrue,
+    .dutyValue = 0,
+  },
+  {
+    .chnlNumber = kFTM_Chnl_2,
+    .level = kFTM_HighTrue,
+    .dutyValue = 0,
+  },
+  {
+    .chnlNumber = kFTM_Chnl_3,
+    .level = kFTM_HighTrue,
+    .dutyValue = 0,
+  },
+  {
+    .chnlNumber = kFTM_Chnl_6,
+    .level = kFTM_HighTrue,
+    .dutyValue = 0,
+  }
+};
+
+static void FTM0_init(void) {
+  FTM_Init(FTM0_PERIPHERAL, &FTM0_config);
+  FTM_SetTimerPeriod(FTM0_PERIPHERAL, FTM0_TIMER_MODULO_VALUE);
+  FTM_SetupPwmMode(FTM0_PERIPHERAL, FTM0_pwmSignalParams, sizeof(FTM0_pwmSignalParams) / sizeof(ftm_chnl_pwm_config_param_t), kFTM_EdgeAlignedPwm);
+  FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+}
+
+/***********************************************************************************************************************
  * USB0 initialization code
  **********************************************************************************************************************/
 /* clang-format off */
@@ -278,6 +418,7 @@ void BOARD_InitPeripherals(void)
   /* Initialize components */
   UART3_init();
   PIT_init();
+  FTM0_init();
   USB0_init();
 }
 

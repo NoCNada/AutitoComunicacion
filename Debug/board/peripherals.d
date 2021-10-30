@@ -15,6 +15,7 @@ board/peripherals.o board/peripherals.d: ../board/peripherals.c \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_uart.h \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_clock.h \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_pit.h \
+ D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_ftm.h \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\source\generated/usb_device_composite.h \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\source\generated/usb_device_config.h \
  D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\usb\include/usb.h \
@@ -44,6 +45,7 @@ D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_commo
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_uart.h:
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_clock.h:
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_pit.h:
+D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\drivers/fsl_ftm.h:
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\source\generated/usb_device_composite.h:
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\source\generated/usb_device_config.h:
 D\:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\usb\include/usb.h:

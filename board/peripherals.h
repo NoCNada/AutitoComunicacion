@@ -13,6 +13,7 @@
 #include "fsl_uart.h"
 #include "fsl_clock.h"
 #include "fsl_pit.h"
+#include "fsl_ftm.h"
 #include "usb_device_composite.h"
 
 #if defined(__cplusplus)
@@ -56,12 +57,27 @@ extern "C" {
 #define PIT_CHANNEL_0_IRQN PIT0_IRQn
 /* PIT interrupt handler identifier. */
 #define PIT_CHANNEL_0_IRQHANDLER PIT0_IRQHandler
+/* Definition of peripheral ID */
+#define FTM0_PERIPHERAL FTM0
+/* Definition of the clock source frequency */
+#define FTM0_CLOCK_SOURCE 4000000UL
+/* Definition of the clock source frequency */
+#define FTM0_TIMER_MODULO_VALUE 3999
+/* Definition of FTM0 channel/pair number 1 on Edge-aligned PWM */
+#define FTM0_PWM_1_CHANNEL kFTM_Chnl_1
+/* Definition of FTM0 channel/pair number 2 on Edge-aligned PWM */
+#define FTM0_PWM_2_CHANNEL kFTM_Chnl_2
+/* Definition of FTM0 channel/pair number 3 on Edge-aligned PWM */
+#define FTM0_PWM_3_CHANNEL kFTM_Chnl_3
+/* Definition of FTM0 channel/pair number 6 on Edge-aligned PWM */
+#define FTM0_PWM_6_CHANNEL kFTM_Chnl_6
 
 /***********************************************************************************************************************
  * Global variables
  **********************************************************************************************************************/
 extern const uart_config_t UART3_config;
 extern const pit_config_t PIT_config;
+extern const ftm_config_t FTM0_config;
 
 /***********************************************************************************************************************
  * Initialization functions

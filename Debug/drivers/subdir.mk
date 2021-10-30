@@ -8,6 +8,7 @@ C_SRCS += \
 ../drivers/fsl_clock.c \
 ../drivers/fsl_common.c \
 ../drivers/fsl_common_arm.c \
+../drivers/fsl_ftm.c \
 ../drivers/fsl_gpio.c \
 ../drivers/fsl_i2c.c \
 ../drivers/fsl_pit.c \
@@ -20,6 +21,7 @@ OBJS += \
 ./drivers/fsl_clock.o \
 ./drivers/fsl_common.o \
 ./drivers/fsl_common_arm.o \
+./drivers/fsl_ftm.o \
 ./drivers/fsl_gpio.o \
 ./drivers/fsl_i2c.o \
 ./drivers/fsl_pit.o \
@@ -32,6 +34,7 @@ C_DEPS += \
 ./drivers/fsl_clock.d \
 ./drivers/fsl_common.d \
 ./drivers/fsl_common_arm.d \
+./drivers/fsl_ftm.d \
 ./drivers/fsl_gpio.d \
 ./drivers/fsl_i2c.d \
 ./drivers/fsl_pit.d \

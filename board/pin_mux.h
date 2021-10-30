@@ -43,6 +43,32 @@ void BOARD_InitBootPins(void);
 #define BOARD_TMR_1588_1_PIN_MASK (1U << 17U)      /*!<@brief PORT pin mask */
                                                    /* @} */
 
+/*! @name PORTB18 (number 64), J1[1]
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_RST_ESP_GPIO GPIOB                /*!<@brief GPIO peripheral base pointer */
+#define BOARD_RST_ESP_GPIO_PIN_MASK (1U << 18U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_RST_ESP_PORT PORTB                /*!<@brief PORT peripheral base pointer */
+#define BOARD_RST_ESP_PIN 18U                   /*!<@brief PORT pin number */
+#define BOARD_RST_ESP_PIN_MASK (1U << 18U)      /*!<@brief PORT pin mask */
+                                                /* @} */
+
+/*! @name PORTB19 (number 65), J1[3]
+  @{ */
+
+/* Symbols to be used with GPIO driver */
+#define BOARD_EN_ESP_GPIO GPIOB                /*!<@brief GPIO peripheral base pointer */
+#define BOARD_EN_ESP_GPIO_PIN_MASK (1U << 19U) /*!<@brief GPIO pin mask */
+
+/* Symbols to be used with PORT driver */
+#define BOARD_EN_ESP_PORT PORTB                /*!<@brief PORT peripheral base pointer */
+#define BOARD_EN_ESP_PIN 19U                   /*!<@brief PORT pin number */
+#define BOARD_EN_ESP_PIN_MASK (1U << 19U)      /*!<@brief PORT pin mask */
+                                               /* @} */
+
 /*!
  * @brief Configures pin routing and optionally pin electrical features.
  *

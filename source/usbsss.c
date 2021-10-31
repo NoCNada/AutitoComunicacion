@@ -87,9 +87,14 @@ const char ANS_CWJAP[]={'A','T','+','C','W','J','A','P','=','"','M','I','C','R',
 						'"','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
 						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
 
+const char ANS_CWJAP_ERROR_FAIL[]={'+','C','W','J','A','P',':','3','\r','\n','\r','\n','F','A','I','L','\r','\n'};
+
+
 const char ANS_CWJAP2[]={'A','T','+','C','W','J','A','P','=','"','N','u','n','o','"',',','"','e','s','s','6','-','8','y','i','v','-','0','p','w','t',
 						'"','\r','\n','W','I','F','I',' ','C','O','N','N','E','C','T','E','D','\r','\n','W','I','F','I',
 						' ','G','O','T','I','P','\r','\n','\r','\n','O','K','\r','\n'};
+
+//const char ANS_CWJAP2_ERROR_FAIL[]={'+','C','W','J','A','P',':','3','/r','/n','/r','n','F','A','I','L','/r','/n'};
 
 //Respuesta CWJAP?
 const char ANS_CWJAP_PREGUNTA[] = {"AT+CWJAP?\r\nNo AP\r\n\r\nOK\r\n"};//24
@@ -100,6 +105,11 @@ const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
 const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
+
+const char ANS_CIPSTART_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//70
+
 
 const char ANS_CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r',
@@ -191,6 +201,10 @@ typedef union {
 #define SSIDMicros flag1.bit.b5 //iniciar ESP
 #define RESETESP flag1.bit.b6 //RESET ESP
 #define DESCONECTADO flag1.bit.b7 //RESET ESP
+#define PrioridadRed1 flag2.bit.b0
+#define REENVIARMENSAJE flag2.bit.b1
+
+
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
 #define MOTORSONOCMD 0xD2 // COMANDO ON/OFF MOTOR
@@ -199,15 +213,17 @@ typedef union {
 
 
 // Variables Globales
-volatile _sFlag flag1;
+volatile _sFlag flag1, flag2;
 _sWork PWM1, PWM2;
-uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP, timeout2 = 0,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
+uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
+uint16_t timeout2 = 0;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t o_recibe = 0, k_recibe = 0, lastcommand = 1,sizecommand=6;
 uint8_t coincidencias = 0, statusCIFSR = 0, recepcion = 0,coincidencias2 = 0,statusCWQAP = 0;
 uint32_t g_systickCounter;
 uint8_t test[256];
 uint8_t NADADEPRUEBAS = 1;
+uint8_t iii = 0;
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -281,6 +297,7 @@ int main(void) {
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
+    PrioridadRed1 = 1;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -310,13 +327,35 @@ int main(void) {
     		LeerCabecera(ringRx.iW);
 
     	}
+
     	if((espRx.iW != espRx.iR) && (!timeout2)){
     		DecoEsp();
     		//espRx.iR++;
     	}
+    	if((espRx.iW == espRx.iR) && (!timeout3) && (REENVIARMENSAJE)){
+    		switch(statusAT){
+    		case 4:
+        		coincidencias =0;
+        		statusCIFSR = 0;
+        		REENVIARMENSAJE = 0;
+        		readyToSend = 1;
+    		break;
+    		case 5:
+				coincidencias = 0;
+				coincidencias2 = 0;
+				readyToSend = 1;
+				REENVIARMENSAJE = 0;
+			break;
+    		}
+
+
+
+    	}
     	if(espTx.iW != espTx.iR){
     	   ESP_UART3_SEND();
     	}
+
+
 
     	i++ ;
         /* 'Dummy' NOP to allow source level single stepping of
@@ -350,21 +389,39 @@ void CommandUdp(uint8_t comando){
 		switch(comando){
 			case 0xF0:
 				if(parte1){
-					memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
-					espTx.iW += 11;
-					memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
-					espTx.iW += 3;
+					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+					espTx.buf[espTx.iW++] = 'A';
+					espTx.buf[espTx.iW++] = 'T';
+					espTx.buf[espTx.iW++] = '+';
+					espTx.buf[espTx.iW++] = 'C';
+					espTx.buf[espTx.iW++] = 'I';
+					espTx.buf[espTx.iW++] = 'P';
+					espTx.buf[espTx.iW++] = 'S';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'D';
+					espTx.buf[espTx.iW++] = '=';
+					espTx.buf[espTx.iW++] = '4';
+					espTx.buf[espTx.iW++] = '\r';
+					espTx.buf[espTx.iW++] = '\n';
+					//espTx.iW += 11;
+					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+					//espTx.iW += 3;
 				//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
 				//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
-					memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+				//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
 				//	parte1=0;
 					timeout2 = 30;
 				//	readyToSend = 0;
 				}
 				else {
-					memcpy(&espTx.buf[espTx.iW], "test", 4);
-					espTx.iW += 4;
-					memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					//memcpy(&espTx.buf[espTx.iW], "test", 4);
+					//espTx.iW += 4;
+					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					espTx.buf[espTx.iW++] = 't';
+					espTx.buf[espTx.iW++] = 'e';
+					espTx.buf[espTx.iW++] = 's';
+					espTx.buf[espTx.iW++] = 't';
 					readyToSend = 0;
 					parte1=0;
 				//	timeout2 = 15;
@@ -386,69 +443,73 @@ void initESP(void){
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
+//			case 1:
+//				if(NADADEPRUEBAS){
+//					statusAT++;
+//					SSIDNuno = 1;
+//					SSIDMicros = 0;
+//				}
+//				else{
+//					memcpy(&espTx.buf[espTx.iW], CWLAP,10);
+//					espTx.iW += 10;
+//					timeout2 = 200;
+//					readyToSend = 0;
+//				}
+//
+//			break;
 			case 1:
-				if(NADADEPRUEBAS){
-					statusAT++;
-					SSIDNuno = 1;
-					SSIDMicros = 0;
-				}
-				else{
-					memcpy(&espTx.buf[espTx.iW], CWLAP,10);
-					espTx.iW += 10;
-					timeout2 = 200;
-					readyToSend = 0;
-				}
-
-			break;
-			case 2:
 				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
 				espTx.iW += 13;
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
-			case 3:
-				if(SSIDNuno){
+			case 2:
+
+				if(PrioridadRed1){
 					memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
 					espTx.iW += 34;
 					timeout2 = 100;
 					readyToSend = 0;
 				}
 				else{
-					if(SSIDMicros){
-						memcpy(&espTx.buf[espTx.iW], CWJAP, 35); //34 CASA 35 MICROS
-						espTx.iW += 35;
-						timeout2 = 100;
-						readyToSend = 0;
-					}
-
+					memcpy(&espTx.buf[espTx.iW], CWJAP, 35); //34 CASA 35 MICROS
+					espTx.iW += 35;
+					timeout2 = 100;
+					readyToSend = 0;
 				}
 
 			break;
-			case 4:
+			case 3:
 				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
 				espTx.iW += 13;
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
-			case 5:
+			case 4:
 				memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
 				espTx.iW += 10;
-				timeout2 = 30;
+				timeout2 = 60;
+				timeout3 = 120;
 				readyToSend = 0;
+				REENVIARMENSAJE=1;
 			break;
-			case 6:
+			case 5:
 				if(SSIDNuno){
 					memcpy(&espTx.buf[espTx.iW], CIPSTART2,46);
 					espTx.iW += 46;
 					timeout2 = 50;
+					timeout3 = 100;
 					readyToSend = 0;
+					REENVIARMENSAJE = 1;
 				}
 				else{
 					if(SSIDMicros){
 						memcpy(&espTx.buf[espTx.iW], CIPSTART,44); //44 micros 46 casa
 						espTx.iW += 44;
-						timeout2 = 15;
+						timeout2 = 50;
+						timeout3 = 100;
 						readyToSend = 0;
+						REENVIARMENSAJE = 1;
 					}
 				}
 			break;
@@ -471,7 +532,7 @@ uint8_t BusyESP(uint8_t c){
 }
 
 void DecoEsp(void){
-static uint8_t iii = 0;
+
 	switch(statusAT){
 	case 0:
 		if(espRx.buf[espRx.iR]==ANS_CWQAP[coincidencias]){
@@ -483,7 +544,7 @@ static uint8_t iii = 0;
 				DESCONECTADO = 1;
 			}
 		}
-		test[iii++] = espRx.buf[espRx.iR];
+		//test[iii++] = espRx.buf[espRx.iR];
 		espRx.iR++;
 		if((espRx.iR==espRx.iW) && (!DESCONECTADO)){
 			coincidencias = 0;
@@ -491,70 +552,30 @@ static uint8_t iii = 0;
 			readyToSend=1;
 		}
 	break;
+//	case 1:
+//		if(NADADEPRUEBAS){
+//			statusCWQAP=0;
+//			statusAT++;
+//			coincidencias = 0;
+//			coincidencias2 = 0;
+//			readyToSend=1;
+//			SSIDNuno = 1;
+//			SSIDMicros = 0;
+//		}
+//		else{
+//
+//		}
+//
+//		test[iii++] = espRx.buf[espRx.iR];
+//		espRx.iR++;
+//		if((espRx.iR==espRx.iW) && (!SSIDMicros && !SSIDNuno)){
+//			coincidencias2 = 0;
+//			statusCWQAP=0;
+//			coincidencias = 0;
+//			readyToSend=1;
+//		}
+//	break;
 	case 1:
-		if(NADADEPRUEBAS){
-			statusCWQAP=0;
-			statusAT++;
-			coincidencias = 0;
-			coincidencias2 = 0;
-			readyToSend=1;
-			SSIDNuno = 1;
-			SSIDMicros = 0;
-		}
-		else{
-			switch(statusCWQAP){
-					case 0:
-						if(espRx.buf[espRx.iR]==ANS_CWLAP[coincidencias]){
-							coincidencias++;
-							if(coincidencias == 21){
-								statusCWQAP++;
-								coincidencias = 0;
-								//readyToSend = 1;
-							}
-						}
-					break;
-					case 1:
-						if(espRx.buf[espRx.iR]==SSIDNUNO[coincidencias]){
-							coincidencias++;
-							if (coincidencias==6) {
-								//status
-								SSIDNuno=1;
-								statusCWQAP=0;
-								statusAT++;
-								coincidencias = 0;
-								coincidencias2 = 0;
-								readyToSend=1;
-							}
-						}
-						else {
-							if(espRx.buf[espRx.iR]==SSIDMICROS[coincidencias2]){
-								coincidencias2++;
-								if (coincidencias2==8) {
-									//status
-									statusCWQAP=0;
-									statusAT++;
-									SSIDMicros=1;
-									coincidencias2 = 0;
-									coincidencias = 0;
-									readyToSend=1;
-								}
-							}
-						}
-
-					break;
-					}
-		}
-
-		test[iii++] = espRx.buf[espRx.iR];
-		espRx.iR++;
-		if((espRx.iR==espRx.iW) && (!SSIDMicros && !SSIDNuno)){
-			coincidencias2 = 0;
-			statusCWQAP=0;
-			coincidencias = 0;
-			readyToSend=1;
-		}
-	break;
-	case 2:
 		if(espRx.buf[espRx.iR]==ANS_CWMODE[coincidencias]){
 			coincidencias++;
 			if(coincidencias == 19){
@@ -563,36 +584,56 @@ static uint8_t iii = 0;
 				readyToSend = 1;
 			}
 		}
-		test[iii++] = espRx.buf[espRx.iR];
+		//test[iii++] = espRx.buf[espRx.iR];
 		espRx.iR++;
 	break;
-	case 3:
-		if(SSIDNuno){
+	case 2:
+		if(PrioridadRed1){
 			if(espRx.buf[espRx.iR]==ANS_CWJAP2[coincidencias]){
 				coincidencias++;
 				if(coincidencias == 68){
 					statusAT++;
 					coincidencias = 0;
+					coincidencias2 = 0;
 					readyToSend = 1;
+					SSIDNuno = 1;
+					SSIDMicros = 0;
 				}
 			}
 		}
 		else{
-			if(SSIDMicros){
-				if(espRx.buf[espRx.iR]==ANS_CWJAP[coincidencias]){
-					coincidencias++;
-					if(coincidencias == 69){
-						statusAT++;
-						coincidencias = 0;
-						readyToSend = 1;
-					}
+			if(espRx.buf[espRx.iR]==ANS_CWJAP[coincidencias]){
+				coincidencias++;
+				if(coincidencias == 69){
+					statusAT++;
+					coincidencias = 0;
+					coincidencias2 = 0;
+					readyToSend = 1;
+					SSIDNuno = 0;
+					SSIDMicros = 1;
 				}
 			}
 		}
-		test[iii++] = espRx.buf[espRx.iR];
+		if(espRx.buf[espRx.iR]==ANS_CWJAP_ERROR_FAIL[coincidencias2]){
+			coincidencias2++;
+			if(coincidencias2 == 16){
+				//statusAT++;
+				PrioridadRed1 = ~PrioridadRed1;
+				coincidencias = 0;
+				coincidencias2 = 0;
+				readyToSend = 1;
+				SSIDNuno = 0;
+				SSIDMicros = 0;
+			}
+		}
+		//test[iii++] = espRx.buf[espRx.iR];
+//		if(espRx.iR == espRx.iW && ((!SSIDNuno) || (!SSIDMicros))){
+//					timeout2 = 14000;
+//				}
 		espRx.iR++;
+
 	break;
-	case 4:
+	case 3:
 		if(espRx.buf[espRx.iR]==ANS_CIPMUX[coincidencias]){
 			coincidencias++;
 			if(coincidencias == 13){
@@ -603,7 +644,7 @@ static uint8_t iii = 0;
 		}
 		espRx.iR++;
 	break;
-	case 5:
+	case 4:
 		switch(statusCIFSR){
 			case 0:
 				if(espRx.buf[espRx.iR]==CIFSR[coincidencias]){
@@ -644,14 +685,16 @@ static uint8_t iii = 0;
 						statusAT++;
 						coincidencias = 0;
 						statusCIFSR=0;
+						REENVIARMENSAJE = 0;
 						readyToSend = 1;
 					}
 				}
 			break;
 		}
+
 		espRx.iR++;
 	break;
-	case 6:
+	case 5:
 		if(SSIDNuno){
 			if(espRx.buf[espRx.iR]==ANS_CIPSTART2[coincidencias]){
 				coincidencias++;
@@ -661,6 +704,7 @@ static uint8_t iii = 0;
 					coincidencias = 0;
 					coincidencias2 = 0;
 					readyToSend = 1;
+					REENVIARMENSAJE = 0;
 				}
 			}
 			if(espRx.buf[espRx.iR]==ANS_CIPSTART2_ERROR[coincidencias2]){
@@ -671,6 +715,7 @@ static uint8_t iii = 0;
 					coincidencias = 0;
 					coincidencias2 = 0;
 					readyToSend = 1;
+					REENVIARMENSAJE = 0;
 				}
 			}
 		}
@@ -683,18 +728,30 @@ static uint8_t iii = 0;
 						statusESP++;
 						coincidencias = 0;
 						readyToSend = 1;
+						REENVIARMENSAJE = 0;
+					}
+				}
+				if(espRx.buf[espRx.iR]==ANS_CIPSTART_ERROR[coincidencias2]){
+					coincidencias2++;
+					if(coincidencias2 == 70){
+						statusAT++;
+						statusESP++;
+						coincidencias = 0;
+						coincidencias2 = 0;
+						readyToSend = 1;
+						REENVIARMENSAJE = 0;
 					}
 				}
 			}
 		}
 		espRx.iR++;
 	break;
-	case 7:
+	case 6:
 		switch(recepcion){
 			case 0:
-				if(espRx.buf[espRx.iR]==CIPSEND_NBYTES[coincidencias]){
+				if(espRx.buf[espRx.iR]==CIPSEND_4BYTES55[coincidencias]){
 					coincidencias++;
-					if(coincidencias == strlen(CIPSEND_NBYTES)){
+					if(coincidencias == 20){
 						//statusAT++;
 						recepcion++;
 						readyToSend = 1;
@@ -707,11 +764,18 @@ static uint8_t iii = 0;
 				espRx.iR++;
 			break;
 			case 1:
-				if(espRx.buf[espRx.iR]==CIPSEND_NBYTES[coincidencias]){
+				if(espRx.buf[espRx.iR]==CIPSEND_4BYTES2[coincidencias]){
 					coincidencias++;
-					if(coincidencias == strlen(CIPSEND_NBYTES)){
+					if(coincidencias == 25){
 						//statusAT++;
 						recepcion=0;
+						//statusESP = 0;
+						//statusAT = 0;
+						//SSIDNuno = 0;
+						//SSIDMicros= 0;
+						//lIp=0;
+						timeoutESP = 250;
+						//DESCONECTADO = 0;
 						parte1 = 1;
 						readyToSend = 1;
 						//statusESP++;

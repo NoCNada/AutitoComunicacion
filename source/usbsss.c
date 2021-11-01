@@ -136,10 +136,12 @@ const char CIFSR_STAIP[]={"+CIFSR:STAIP,"};
 //Respuesta OK
 const char OK[]={"\r\nOK\r\n"};
 //CIPSEND 4 BYTES
-const char CIPSEND_4BYTES[]={'A','T','+','C','I','P','S','E','N','D','=','4','\r','\n','\r','\n','O','K','\r','\n','>'};
 const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
 const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
-
+const char CIPSEND_1[]={"AT+CIPSEND="};//
+const char CIPSEND_2[]={"\r\n\r\nOK\r\n>"};//9
+const char CIPSEND_3[]={"Recv "};//5
+const char CIPSEND_4[]={" bytes\r\n\r\nSEND OK\r\n"};//19
 /* TODO: insert other include files here. */
 
 /* TODO: insert other definitions and declarations here. */
@@ -218,8 +220,8 @@ _sWork PWM1, PWM2;
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
 uint16_t timeout2 = 0;
 char espIP[20],CIPSEND_NBYTES[30];
-uint8_t o_recibe = 0, k_recibe = 0, lastcommand = 1,sizecommand=6;
-uint8_t coincidencias = 0, statusCIFSR = 0, recepcion = 0,coincidencias2 = 0,statusCWQAP = 0;
+uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
+uint8_t bytesToSend = 0, bytesToSend_aux = 0;
 uint32_t g_systickCounter;
 uint8_t test[256];
 uint8_t NADADEPRUEBAS = 1;
@@ -372,7 +374,7 @@ void resetESP(void){
 		//GPIO_PortToggle(base, mask)
 		//GPIO_PinWrite(BOARD_RST_ESP_PORT, BOARD_RST_ESP_PIN, 0);
 		RESETESP = 1;
-		timeoutESP = 10;
+		timeoutESP = 50;
 	}
 	else{
 		timeoutRead = 100;
@@ -401,9 +403,10 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = 'N';
 					espTx.buf[espTx.iW++] = 'D';
 					espTx.buf[espTx.iW++] = '=';
-					espTx.buf[espTx.iW++] = '4';
+					espTx.buf[espTx.iW++] = '9';
 					espTx.buf[espTx.iW++] = '\r';
 					espTx.buf[espTx.iW++] = '\n';
+					bytesToSend = 9;
 					//espTx.iW += 11;
 					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
 					//espTx.iW += 3;
@@ -418,10 +421,16 @@ void CommandUdp(uint8_t comando){
 					//memcpy(&espTx.buf[espTx.iW], "test", 4);
 					//espTx.iW += 4;
 					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
-					espTx.buf[espTx.iW++] = 't';
-					espTx.buf[espTx.iW++] = 'e';
-					espTx.buf[espTx.iW++] = 's';
-					espTx.buf[espTx.iW++] = 't';
+					espTx.buf[espTx.iW++] = 'U';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'R';
+					espTx.buf[espTx.iW++] = 0x02;
+					espTx.buf[espTx.iW++] = 0x00;
+					espTx.buf[espTx.iW++] = ':';
+					espTx.buf[espTx.iW++] = 0xF0;
+					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xF0;
+					espTx.buf[espTx.iW++] = espTx.cks;
 					readyToSend = 0;
 					parte1=0;
 				//	timeout2 = 15;
@@ -438,8 +447,11 @@ void initESP(void){
 	if(readyToSend)
 		switch(statusAT){
 			case 0:
-				memcpy(&espTx.buf[espTx.iW], CWQAP,10);
-				espTx.iW += 10;
+				//memcpy(&espTx.buf[espTx.iW], CWQAP,10);
+				for (uint8_t var = 0; var < 10; var++) {
+					espTx.buf[espTx.iW++] = CWQAP[var];
+				}
+				//espTx.iW += 10;
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
@@ -458,36 +470,51 @@ void initESP(void){
 //
 //			break;
 			case 1:
-				memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
-				espTx.iW += 13;
+				//memcpy(&espTx.buf[espTx.iW], CWMODE, 13);
+				//espTx.iW += 13;
+				for (uint8_t var = 0; var < 13; var++) {
+									espTx.buf[espTx.iW++] = CWMODE[var];
+								}
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
 			case 2:
 
 				if(PrioridadRed1){
-					memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
-					espTx.iW += 34;
+					//memcpy(&espTx.buf[espTx.iW], CWJAP2, 34);
+					for (uint8_t var = 0; var < 34; var++) {
+										espTx.buf[espTx.iW++] = CWJAP2[var];
+									}
+					//espTx.iW += 34;
 					timeout2 = 100;
 					readyToSend = 0;
 				}
 				else{
-					memcpy(&espTx.buf[espTx.iW], CWJAP, 35); //34 CASA 35 MICROS
-					espTx.iW += 35;
+					//memcpy(&espTx.buf[espTx.iW], CWJAP, 35); //34 CASA 35 MICROS
+					//espTx.iW += 35;
+					for (uint8_t var = 0; var < 35; var++) {
+										espTx.buf[espTx.iW++] = CWJAP[var];
+									}
 					timeout2 = 100;
 					readyToSend = 0;
 				}
 
 			break;
 			case 3:
-				memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
-				espTx.iW += 13;
+				//memcpy(&espTx.buf[espTx.iW], CIPMUX, 13);
+				//espTx.iW += 13;
+				for (uint8_t var = 0; var < 13; var++) {
+									espTx.buf[espTx.iW++] = CIPMUX[var];
+								}
 				timeout2 = 30;
 				readyToSend = 0;
 			break;
 			case 4:
-				memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
-				espTx.iW += 10;
+				//memcpy(&espTx.buf[espTx.iW], CIFSR, 10);
+				//espTx.iW += 10;
+				for (uint8_t var = 0; var < 10; var++) {
+									espTx.buf[espTx.iW++] = CIFSR[var];
+								}
 				timeout2 = 60;
 				timeout3 = 120;
 				readyToSend = 0;
@@ -495,8 +522,11 @@ void initESP(void){
 			break;
 			case 5:
 				if(SSIDNuno){
-					memcpy(&espTx.buf[espTx.iW], CIPSTART2,46);
-					espTx.iW += 46;
+					//memcpy(&espTx.buf[espTx.iW], CIPSTART);
+					//espTx.iW += 46;
+					for (uint8_t var = 0; var < 46; var++) {
+										espTx.buf[espTx.iW++] = CIPSTART2[var];
+									}
 					timeout2 = 50;
 					timeout3 = 100;
 					readyToSend = 0;
@@ -504,8 +534,11 @@ void initESP(void){
 				}
 				else{
 					if(SSIDMicros){
-						memcpy(&espTx.buf[espTx.iW], CIPSTART,44); //44 micros 46 casa
-						espTx.iW += 44;
+						//memcpy(&espTx.buf[espTx.iW], CIPSTART,44); //44 micros 46 casa
+						//espTx.iW += 44;
+						for (uint8_t var = 0; var < 44; var++) {
+											espTx.buf[espTx.iW++] = CIPSTART[var];
+										}
 						timeout2 = 50;
 						timeout3 = 100;
 						readyToSend = 0;
@@ -747,15 +780,15 @@ void DecoEsp(void){
 		espRx.iR++;
 	break;
 	case 6:
-		switch(recepcion){
+		switch(statusDecoCIPSEND){
 			case 0:
-				if(espRx.buf[espRx.iR]==CIPSEND_4BYTES55[coincidencias]){
+				if(espRx.buf[espRx.iR]==CIPSEND_1[coincidencias]){
 					coincidencias++;
-					if(coincidencias == 20){
+					if(coincidencias == 11){
 						//statusAT++;
-						recepcion++;
-						readyToSend = 1;
-						parte1 = 0;
+						statusDecoCIPSEND++;
+						//readyToSend = 1;
+						//parte1 = 0;
 						//statusESP++;
 						coincidencias = 0;
 						//readyToSend = 1;
@@ -764,20 +797,97 @@ void DecoEsp(void){
 				espRx.iR++;
 			break;
 			case 1:
-				if(espRx.buf[espRx.iR]==CIPSEND_4BYTES2[coincidencias]){
+				if(espRx.buf[espRx.iR]==(bytesToSend+'0') && (bytesToSend<10)){ //veo si lo que envie es menora 10 bytes si no hago cuentas abajo
+					statusDecoCIPSEND = 3;
+//					if(coincidencias == 25){
+//						//statusAT++;
+//						statusDecoCIPSEND=0;
+//						statusESP = 0;
+//						statusAT = 0;
+//						SSIDNuno = 0;
+//						SSIDMicros= 0;
+//						lIp=0;
+//						timeoutESP = 10;
+//						//DESCONECTADO = 0;
+//						parte1 = 1;
+//						readyToSend = 1;
+//						//statusESP++;
+//						coincidencias = 0;
+//						//readyToSend = 1;
+//					}
+				}
+				else{
+					if(espRx.buf[espRx.iR]==(bytesToSend/10+'0')){
+						statusDecoCIPSEND++;
+						bytesToSend_aux=bytesToSend%10;
+					}
+				}
+				espRx.iR++;
+			break;
+			case 2:
+				if(espRx.buf[espRx.iR]==(bytesToSend_aux+'0')){
+					statusDecoCIPSEND++;
+				}
+				espRx.iR++;
+			break;
+			case 3:
+				if(espRx.buf[espRx.iR]==CIPSEND_2[coincidencias]){
 					coincidencias++;
-					if(coincidencias == 25){
+					if(coincidencias == 9){
 						//statusAT++;
-						recepcion=0;
-						//statusESP = 0;
-						//statusAT = 0;
-						//SSIDNuno = 0;
-						//SSIDMicros= 0;
-						//lIp=0;
-						timeoutESP = 250;
-						//DESCONECTADO = 0;
-						parte1 = 1;
+						statusDecoCIPSEND++;
+						//readyToSend = 1;
+						parte1 = 0;
+						//statusESP++;
+						coincidencias = 0;
 						readyToSend = 1;
+					}
+				}
+				espRx.iR++;
+			break;
+			case 4:
+				if(espRx.buf[espRx.iR]==CIPSEND_3[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 4){
+						//statusAT++;
+						statusDecoCIPSEND++;
+						//readyToSend = 1;
+						//parte1 = 0;
+						//statusESP++;
+						coincidencias = 0;
+						//readyToSend = 1;
+					}
+				}
+				espRx.iR++;
+			break;
+			case 5:
+				if(espRx.buf[espRx.iR]==(bytesToSend+'0') && (bytesToSend<10)){
+					statusDecoCIPSEND = 7;
+				}
+				else{
+					if(espRx.buf[espRx.iR]==(bytesToSend/10+'0')){
+						statusDecoCIPSEND++;
+						//bytesToSend_aux=bytesToSend%10;
+					}
+				}
+				espRx.iR++;
+			break;
+			case 6:
+				if(espRx.buf[espRx.iR]==(bytesToSend_aux+'0')){
+					statusDecoCIPSEND++;
+				}
+				espRx.iR++;
+			break;
+			case 7:
+				if(espRx.buf[espRx.iR]==CIPSEND_4[coincidencias]){
+					coincidencias++;
+					if(coincidencias == 19){
+						//statusAT++;
+						//statusDecoCIPSEND++;
+						readyToSend = 1;
+						parte1 = 1;
+						statusDecoCIPSEND = 0;
+						timeoutESP = 50;
 						//statusESP++;
 						coincidencias = 0;
 						//readyToSend = 1;

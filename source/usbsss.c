@@ -142,6 +142,9 @@ const char CIPSEND_1[]={"AT+CIPSEND="};//
 const char CIPSEND_2[]={"\r\n\r\nOK\r\n>"};//9
 const char CIPSEND_3[]={"Recv "};//5
 const char CIPSEND_4[]={" bytes\r\n\r\nSEND OK\r\n"};//19
+const char IPD[]={'+','I','P','D',','};
+
+
 /* TODO: insert other include files here. */
 
 /* TODO: insert other definitions and declarations here. */
@@ -205,7 +208,10 @@ typedef union {
 #define DESCONECTADO flag1.bit.b7 //RESET ESP
 #define PrioridadRed1 flag2.bit.b0
 #define REENVIARMENSAJE flag2.bit.b1
-
+#define PrimerMensaje flag2.bit.b1
+#define ALIVESENTESP flag2.bit.b2
+#define MOTORSENTESP flag2.bit.b3
+#define ALIVE30S flag2.bit.b4
 
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
@@ -218,7 +224,7 @@ typedef union {
 volatile _sFlag flag1, flag2;
 _sWork PWM1, PWM2;
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
-uint16_t timeout2 = 0;
+uint16_t timeout2 = 0, timeoutPrueba = 0;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
 uint8_t bytesToSend = 0, bytesToSend_aux = 0;
@@ -238,7 +244,7 @@ void CommandUdp(uint8_t comando);
 void Delay_ms(uint32_t n);
 uint8_t BusyESP(uint8_t c);
 void resetESP(void);
-
+void RecibirComandoESP(uint8_t comando);
 
 void SysTick_Handler(void){
 	if(g_systickCounter != 0U){
@@ -321,6 +327,12 @@ int main(void) {
     				//lll
     				CommandUdp(0xF0);
     			break;
+    			case 3:
+//    				if(!timeoutPrueba && !ALIVESENTESP){
+//    					CommandUdp(0xF0);
+//    				}
+
+    			break;
         	}
     	}
 
@@ -357,7 +369,15 @@ int main(void) {
     	   ESP_UART3_SEND();
     	}
 
-
+//    	if(!timeoutPrueba){
+//    		ALIVE30S = 1;
+//    	}
+    	if(ALIVESENTESP){
+    		CommandUdp(0xF0);
+    	}
+    	if(MOTORSENTESP){
+    		CommandUdp(0xF1);
+    	}
 
     	i++ ;
         /* 'Dummy' NOP to allow source level single stepping of
@@ -414,7 +434,7 @@ void CommandUdp(uint8_t comando){
 				//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
 				//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
 				//	parte1=0;
-					timeout2 = 30;
+				//	timeout2 = 10;
 				//	readyToSend = 0;
 				}
 				else {
@@ -433,10 +453,62 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = espTx.cks;
 					readyToSend = 0;
 					parte1=0;
+					if(ALIVESENTESP)
+						ALIVESENTESP = 0;
 				//	timeout2 = 15;
 				}
 
 			break;
+			case 0xF1:
+				if(parte1){
+					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+					espTx.buf[espTx.iW++] = 'A';
+					espTx.buf[espTx.iW++] = 'T';
+					espTx.buf[espTx.iW++] = '+';
+					espTx.buf[espTx.iW++] = 'C';
+					espTx.buf[espTx.iW++] = 'I';
+					espTx.buf[espTx.iW++] = 'P';
+					espTx.buf[espTx.iW++] = 'S';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'D';
+					espTx.buf[espTx.iW++] = '=';
+					espTx.buf[espTx.iW++] = '9';
+					espTx.buf[espTx.iW++] = '\r';
+					espTx.buf[espTx.iW++] = '\n';
+					bytesToSend = 9;
+					//espTx.iW += 11;
+					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+					//espTx.iW += 3;
+					//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+					//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
+					//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+					//	parte1=0;
+					//	timeout2 = 10;
+					//	readyToSend = 0;
+				}
+				else {
+					//memcpy(&espTx.buf[espTx.iW], "test", 4);
+					//espTx.iW += 4;
+					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					espTx.buf[espTx.iW++] = 'U';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'R';
+					espTx.buf[espTx.iW++] = 0x02;
+					espTx.buf[espTx.iW++] = 0x00;
+					espTx.buf[espTx.iW++] = ':';
+					espTx.buf[espTx.iW++] = 0xF1;
+					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xF1;
+					espTx.buf[espTx.iW++] = espTx.cks;
+					readyToSend = 0;
+					parte1=0;
+					if(MOTORSENTESP)
+						MOTORSENTESP = 0;
+					//	timeout2 = 15;
+				}
+
+				break;
 		}
 		readyToSend = 0;
 	}
@@ -887,9 +959,14 @@ void DecoEsp(void){
 						readyToSend = 1;
 						parte1 = 1;
 						statusDecoCIPSEND = 0;
-						timeoutESP = 50;
-						//statusESP++;
+						//timeout2 = 50;
+						if(!PrimerMensaje){
+							PrimerMensaje = 1;
+							timeoutPrueba = 3000;
+							statusESP++;
+						}
 						coincidencias = 0;
+						statusAT++;
 						//readyToSend = 1;
 					}
 				}
@@ -898,9 +975,151 @@ void DecoEsp(void){
 		}
 		test[iii++] = espRx.buf[espRx.iR];
 	break;
+	case 7:
+		switch(espRx.header){
+		case 0:
+			if (espRx.buf[espRx.iR] == IPD[coincidencias]){
+				coincidencias++;
+				if (coincidencias == 5){
+					coincidencias = 0;
+					espRx.header++;
+				}
+			}
+			else{
+				if(coincidencias > 0){
+					coincidencias =0;
+					espRx.header = 0;
+					espRx.iR = espRx.iW;
+					espRx.iR--;
+				}
+			}
+			break;
+
+		case 1:
+			if (espRx.buf[espRx.iR] == ':'){
+				espRx.header++;
+			}
+			break;
+		case 2:
+			if (espRx.buf[espRx.iR] == 'U')
+				espRx.header++;
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW;
+				espRx.iR--;
+			}
+			break;
+		case 3:
+			if (espRx.buf[espRx.iR] == 'N')
+				espRx.header++;
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW;
+				espRx.iR--;
+			}
+			break;
+		case 4:
+			if (espRx.buf[espRx.iR] == 'E')
+				espRx.header++;
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW;
+				espRx.iR--;
+			}
+			break;
+		case 5:
+			if (espRx.buf[espRx.iR] == 'R')
+				espRx.header++;
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW;
+				espRx.iR--;
+			}
+			break;
+		case 6:
+			espRx.nBytes = espRx.buf[espRx.iR];
+			espRx.header++;
+			break;
+		case 7:
+			if (espRx.buf[espRx.iR] == 0x00)
+				espRx.header++;
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW - 1;
+			}
+			break;
+		case 8:
+			if (espRx.buf[espRx.iR] == ':')
+			{
+				espRx.cks= 'U'^'N'^'E'^'R'^espRx.nBytes^0x00^':';
+				espRx.header++;
+				espRx.iData = espRx.iR+1;
+			}
+			else{
+				espRx.header = 0;
+				espRx.iR = espRx.iW;
+				espRx.iR--;
+			}
+			break;
+
+		case 9:
+			if(espRx.nBytes>1){
+				espRx.cks^=espRx.buf[espRx.iR];
+			}
+			espRx.nBytes--;
+			if(espRx.nBytes==0){
+				espRx.header=0;
+				if(espRx.cks==espRx.buf[espRx.iR]){
+					//RecibirDatos(ringRx.iData);
+					RecibirComandoESP(espRx.buf[espRx.iData]);
+				}
+			}
+			break;
+		default:
+			espRx.header = 0;
+			break;
+		}
+
+		test[iii++] = espRx.buf[espRx.iR];
+		espRx.iR++;
+	break;
 	}
 
 }
+
+
+void RecibirComandoESP(uint8_t comando){
+	switch (comando){
+		case 0xF0:
+			ALIVESENTESP = 1;
+			statusAT = 6;
+			readyToSend = 1;
+			parte1 = 1;
+			CommandUdp(comando);
+			//algo
+		break;
+		case 0xF1:
+			MOTORSENTESP = 1;
+			statusAT = 6;
+			readyToSend = 1;
+			parte1 = 1;
+			CommandUdp(comando);
+//			PWM1.u8[0] = ringRx.buf[head++];
+//			PWM1.u8[1] = ringRx.buf[head++];
+//			PWM1.u8[2] = ringRx.buf[head++];
+//			PWM1.u8[3] = ringRx.buf[head++];
+//			PWM2.u8[0] = ringRx.buf[head++];
+//			PWM2.u8[1] = ringRx.buf[head++];
+//			PWM2.u8[2] = ringRx.buf[head++];
+//			PWM2.u8[3] = ringRx.buf[head++];
+//			MOTORSSENT = 1; //CONFIRMACION QUE RECIBI LOS DATOS
+		break;
+		case MOTORSONOCMD:
+			MOTORSSENT = 1;
+		break;
+	}
+}
+
 
 void ESP_UART3_SEND(void){
 	if(kUART_TxDataRegEmptyFlag & UART_GetStatusFlags(UART3)){
@@ -1011,6 +1230,8 @@ void LeerCabecera(uint8_t ind){
 		ringRx.iR++;
 	}
 }
+
+
 
 void RecibirDatos(uint8_t head){
 	switch (ringRx.buf[head++]){
@@ -1123,6 +1344,10 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
   if(timeoutESP){
   	  timeoutESP--;
   }
+
+  if(timeoutPrueba){
+	  timeoutPrueba--;
+    }
 
   if(timeoutRead){
     	  timeoutRead--;

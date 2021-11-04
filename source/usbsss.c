@@ -58,7 +58,7 @@ const char CIFSR[]={"AT+CIFSR\r\n"};
 const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
 //Comando CIPSTART Establish UDP Transmition -- Establece transmision UDP
 const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 const char CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 //CIPSTART 2
@@ -103,11 +103,11 @@ const char ANS_CWJAP_PREGUNTA[] = {"AT+CWJAP?\r\nNo AP\r\n\r\nOK\r\n"};//24
 const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
 //Respuesta CIPSTART
 const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
 
 const char ANS_CIPSTART_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','4','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//70
 
 
@@ -211,7 +211,11 @@ typedef union {
 #define PrimerMensaje flag2.bit.b1
 #define ALIVESENTESP flag2.bit.b2
 #define MOTORSENTESP flag2.bit.b3
-#define ALIVE30S flag2.bit.b4
+#define MOTORSOFF flag2.bit.b4
+#define TIMECONFIG flag2.bit.b4
+#define ALIVE30S flag2.bit.b5
+
+
 
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
@@ -224,14 +228,14 @@ typedef union {
 volatile _sFlag flag1, flag2;
 _sWork PWM1, PWM2;
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
-uint16_t timeout2 = 0, timeoutPrueba = 0;
+uint16_t timeout2 = 0, timeoutPrueba = 0, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
 uint8_t bytesToSend = 0, bytesToSend_aux = 0;
 uint32_t g_systickCounter;
 uint8_t test[256];
 uint8_t NADADEPRUEBAS = 1;
-uint8_t iii = 0;
+uint8_t iii = 0, CommandoPepe = 0, iiiii = 0;
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -305,7 +309,7 @@ int main(void) {
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
-    PrioridadRed1 = 1;
+    PrioridadRed1 = 0;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -361,9 +365,7 @@ int main(void) {
 				REENVIARMENSAJE = 0;
 			break;
     		}
-
-
-
+    		REENVIARMENSAJE = 0;
     	}
     	if(espTx.iW != espTx.iR){
     	   ESP_UART3_SEND();
@@ -376,7 +378,21 @@ int main(void) {
     		CommandUdp(0xF0);
     	}
     	if(MOTORSENTESP){
-    		CommandUdp(0xF1);
+
+    		CommandUdp(0xD0);
+    	}
+    	if(TIMECONFIG){
+
+    		CommandUdp(0xD2);
+    	}
+
+
+    	if(!timeoutmotor && MOTORSOFF){
+    		MOTORSOFF = 0;
+    	    FTM_StopTimer(FTM0_PERIPHERAL);
+    	    FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
+    	    FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+    	    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
     	}
 
     	i++ ;
@@ -459,7 +475,7 @@ void CommandUdp(uint8_t comando){
 				}
 
 			break;
-			case 0xF1:
+			case 0xD0:
 				if(parte1){
 					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
 					espTx.buf[espTx.iW++] = 'A';
@@ -473,10 +489,11 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = 'N';
 					espTx.buf[espTx.iW++] = 'D';
 					espTx.buf[espTx.iW++] = '=';
-					espTx.buf[espTx.iW++] = '9';
+					espTx.buf[espTx.iW++] = '1'; //CAMBIAR ESTO
+					espTx.buf[espTx.iW++] = '1'; //CAMBIAR ESTO
 					espTx.buf[espTx.iW++] = '\r';
 					espTx.buf[espTx.iW++] = '\n';
-					bytesToSend = 9;
+					bytesToSend = 11; //CAMBIAR ESTO
 					//espTx.iW += 11;
 					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
 					//espTx.iW += 3;
@@ -495,11 +512,13 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = 'N';
 					espTx.buf[espTx.iW++] = 'E';
 					espTx.buf[espTx.iW++] = 'R';
-					espTx.buf[espTx.iW++] = 0x02;
+					espTx.buf[espTx.iW++] = 0x04;//CAMBIAR ESTO
 					espTx.buf[espTx.iW++] = 0x00;
 					espTx.buf[espTx.iW++] = ':';
-					espTx.buf[espTx.iW++] = 0xF1;
-					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xF1;
+					espTx.buf[espTx.iW++] = 0xD0;
+					espTx.buf[espTx.iW++] = 0x0D;
+					espTx.buf[espTx.iW++] = 0xDC;
+					espTx.cks = 'U'^'N'^'E'^'R'^0x04^0x00^':'^0xD0^0x0D^0xDC;
 					espTx.buf[espTx.iW++] = espTx.cks;
 					readyToSend = 0;
 					parte1=0;
@@ -509,6 +528,56 @@ void CommandUdp(uint8_t comando){
 				}
 
 				break;
+//			case 0xD2:
+//				if(parte1){
+//					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+//					espTx.buf[espTx.iW++] = 'A';
+//					espTx.buf[espTx.iW++] = 'T';
+//					espTx.buf[espTx.iW++] = '+';
+//					espTx.buf[espTx.iW++] = 'C';
+//					espTx.buf[espTx.iW++] = 'I';
+//					espTx.buf[espTx.iW++] = 'P';
+//					espTx.buf[espTx.iW++] = 'S';
+//					espTx.buf[espTx.iW++] = 'E';
+//					espTx.buf[espTx.iW++] = 'N';
+//					espTx.buf[espTx.iW++] = 'D';
+//					espTx.buf[espTx.iW++] = '=';
+//					espTx.buf[espTx.iW++] = '9';
+//					//espTx.buf[espTx.iW++] = '0';
+//					espTx.buf[espTx.iW++] = '\r';
+//					espTx.buf[espTx.iW++] = '\n';
+//					bytesToSend = 9;
+//					//espTx.iW += 11;
+//					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+//					//espTx.iW += 3;
+//					//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+//					//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
+//					//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+//					//	parte1=0;
+//					//	timeout2 = 10;
+//					//	readyToSend = 0;
+//				}
+//				else {
+//					//memcpy(&espTx.buf[espTx.iW], "test", 4);
+//					//espTx.iW += 4;
+//					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+//					espTx.buf[espTx.iW++] = 'U';
+//					espTx.buf[espTx.iW++] = 'N';
+//					espTx.buf[espTx.iW++] = 'E';
+//					espTx.buf[espTx.iW++] = 'R';
+//					espTx.buf[espTx.iW++] = 0x02;
+//					espTx.buf[espTx.iW++] = 0x00;
+//					espTx.buf[espTx.iW++] = ':';
+//					espTx.buf[espTx.iW++] = 0xD2;
+//					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xD2;
+//					espTx.buf[espTx.iW++] = espTx.cks;
+//					readyToSend = 0;
+//					parte1=0;
+//					if(TIMECONFIG)
+//						TIMECONFIG = 0;
+//					//	timeout2 = 15;
+//				}
+//			break;
 		}
 		readyToSend = 0;
 	}
@@ -1053,7 +1122,9 @@ void DecoEsp(void){
 			{
 				espRx.cks= 'U'^'N'^'E'^'R'^espRx.nBytes^0x00^':';
 				espRx.header++;
-				espRx.iData = espRx.iR+1;
+				CommandoPepe = espRx.iR+1;
+				espRx.iData = espRx.iR+2;
+				//espRx.iData + 1;
 			}
 			else{
 				espRx.header = 0;
@@ -1068,10 +1139,10 @@ void DecoEsp(void){
 			}
 			espRx.nBytes--;
 			if(espRx.nBytes==0){
-				espRx.header=0;
+				espRx.header = 0;
 				if(espRx.cks==espRx.buf[espRx.iR]){
 					//RecibirDatos(ringRx.iData);
-					RecibirComandoESP(espRx.buf[espRx.iData]);
+					RecibirComandoESP(espRx.buf[CommandoPepe]);
 				}
 			}
 			break;
@@ -1089,6 +1160,7 @@ void DecoEsp(void){
 
 
 void RecibirComandoESP(uint8_t comando){
+	//iiiii = 0;
 	switch (comando){
 		case 0xF0:
 			ALIVESENTESP = 1;
@@ -1096,14 +1168,44 @@ void RecibirComandoESP(uint8_t comando){
 			readyToSend = 1;
 			parte1 = 1;
 			CommandUdp(comando);
+			espRx.header=0;
+			//TODOOOK = 0;
 			//algo
 		break;
-		case 0xF1:
-			MOTORSENTESP = 1;
-			statusAT = 6;
-			readyToSend = 1;
-			parte1 = 1;
-			CommandUdp(comando);
+		case 0xD0:
+
+			PWM1.u8[0]=espRx.buf[espRx.iR-8];
+			PWM1.u8[1]=espRx.buf[espRx.iR-7];
+			PWM1.u8[2]=espRx.buf[espRx.iR-6];
+			PWM1.u8[3]=espRx.buf[espRx.iR-5];
+			PWM2.u8[0]=espRx.buf[espRx.iR-4];
+			PWM2.u8[1]=espRx.buf[espRx.iR-3];
+			PWM2.u8[2]=espRx.buf[espRx.iR-2];
+			PWM2.u8[3]=espRx.buf[espRx.iR-1];
+
+			//test[iiiii] = espRx.buf[CommandoPepe];
+			//if(iiiii > 7){
+				FTM_StopTimer(FTM0_PERIPHERAL);
+				FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[0]; //ES MAS LENTO
+			//	FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
+				FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[0];
+			//	FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
+				FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+				MOTORSENTESP = 1;
+				statusAT = 6;
+				readyToSend = 1;
+				parte1 = 1;
+				timeoutmotor = timemotor;
+				MOTORSOFF = 1;
+				iiiii = 0;
+				CommandUdp(comando);
+				espRx.header = 0;
+				//espRx.header=0;
+				//TODOOOK = 0;
+			//}
+
+
+
 //			PWM1.u8[0] = ringRx.buf[head++];
 //			PWM1.u8[1] = ringRx.buf[head++];
 //			PWM1.u8[2] = ringRx.buf[head++];
@@ -1114,9 +1216,20 @@ void RecibirComandoESP(uint8_t comando){
 //			PWM2.u8[3] = ringRx.buf[head++];
 //			MOTORSSENT = 1; //CONFIRMACION QUE RECIBI LOS DATOS
 		break;
-		case MOTORSONOCMD:
-			MOTORSSENT = 1;
-		break;
+		case 0xD2:
+			TIMECONFIG = 1;
+			statusAT = 6;
+			readyToSend = 1;
+			parte1 = 1;
+			timemotor = espRx.buf[espRx.iR-1]*100;
+			//CommandUdp(comando);
+			espRx.header=0;
+			//TODOOOK = 0;
+			//algo
+			break;
+//		case MOTORSONOCMD:
+//			MOTORSSENT = 1;
+//		break;
 	}
 }
 
@@ -1348,7 +1461,9 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
   if(timeoutPrueba){
 	  timeoutPrueba--;
     }
-
+  if(timeoutmotor){
+	  timeoutmotor--;
+    }
   if(timeoutRead){
     	  timeoutRead--;
     }

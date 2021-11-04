@@ -1,2 +1,2 @@
-D:\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\utilities/fsl_debug_console.h:152:24:DbgConsole_Init	24	static
+C:\Users\Lauta\Documents\MCUXpressoIDE_11.4.0_6224\workspace\usbsss\utilities/fsl_debug_console.h:152:24:DbgConsole_Init	24	static
 ../board/board.c:17:6:BOARD_InitDebugConsole	16	static

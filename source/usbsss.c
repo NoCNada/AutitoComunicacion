@@ -212,8 +212,8 @@ typedef union {
 #define ALIVESENTESP flag2.bit.b2
 #define MOTORSENTESP flag2.bit.b3
 #define MOTORSOFF flag2.bit.b4
-#define TIMECONFIG flag2.bit.b4
-#define ALIVE30S flag2.bit.b5
+#define TIMECONFIG flag2.bit.b5
+#define ALIVE30S flag2.bit.b6
 
 
 
@@ -227,7 +227,7 @@ typedef union {
 // Variables Globales
 volatile _sFlag flag1, flag2;
 _sWork PWM1, PWM2;
-uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0;
+uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0, timeout4;
 uint16_t timeout2 = 0, timeoutPrueba = 0, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
@@ -309,7 +309,7 @@ int main(void) {
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
-    PrioridadRed1 = 0;
+    PrioridadRed1 = 1;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -423,7 +423,7 @@ void resetESP(void){
 }
 
 void CommandUdp(uint8_t comando){
-	if(readyToSend){
+	if(readyToSend && (!timeout4)){
 		switch(comando){
 			case 0xF0:
 				if(parte1){
@@ -443,6 +443,7 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = '\r';
 					espTx.buf[espTx.iW++] = '\n';
 					bytesToSend = 9;
+					timeout4 = 2;
 					//espTx.iW += 11;
 					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
 					//espTx.iW += 3;
@@ -469,6 +470,7 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = espTx.cks;
 					readyToSend = 0;
 					parte1=0;
+					timeout4 = 1;
 					if(ALIVESENTESP)
 						ALIVESENTESP = 0;
 				//	timeout2 = 15;
@@ -494,6 +496,7 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = '\r';
 					espTx.buf[espTx.iW++] = '\n';
 					bytesToSend = 11; //CAMBIAR ESTO
+					timeout4 = 2;
 					//espTx.iW += 11;
 					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
 					//espTx.iW += 3;
@@ -522,62 +525,65 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = espTx.cks;
 					readyToSend = 0;
 					parte1=0;
+					timeout4 = 1;
 					if(MOTORSENTESP)
 						MOTORSENTESP = 0;
 					//	timeout2 = 15;
 				}
 
 				break;
-//			case 0xD2:
-//				if(parte1){
-//					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
-//					espTx.buf[espTx.iW++] = 'A';
-//					espTx.buf[espTx.iW++] = 'T';
-//					espTx.buf[espTx.iW++] = '+';
-//					espTx.buf[espTx.iW++] = 'C';
-//					espTx.buf[espTx.iW++] = 'I';
-//					espTx.buf[espTx.iW++] = 'P';
-//					espTx.buf[espTx.iW++] = 'S';
-//					espTx.buf[espTx.iW++] = 'E';
-//					espTx.buf[espTx.iW++] = 'N';
-//					espTx.buf[espTx.iW++] = 'D';
-//					espTx.buf[espTx.iW++] = '=';
-//					espTx.buf[espTx.iW++] = '9';
-//					//espTx.buf[espTx.iW++] = '0';
-//					espTx.buf[espTx.iW++] = '\r';
-//					espTx.buf[espTx.iW++] = '\n';
-//					bytesToSend = 9;
-//					//espTx.iW += 11;
-//					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
-//					//espTx.iW += 3;
-//					//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
-//					//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
-//					//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
-//					//	parte1=0;
-//					//	timeout2 = 10;
-//					//	readyToSend = 0;
-//				}
-//				else {
-//					//memcpy(&espTx.buf[espTx.iW], "test", 4);
-//					//espTx.iW += 4;
-//					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
-//					espTx.buf[espTx.iW++] = 'U';
-//					espTx.buf[espTx.iW++] = 'N';
-//					espTx.buf[espTx.iW++] = 'E';
-//					espTx.buf[espTx.iW++] = 'R';
-//					espTx.buf[espTx.iW++] = 0x02;
-//					espTx.buf[espTx.iW++] = 0x00;
-//					espTx.buf[espTx.iW++] = ':';
-//					espTx.buf[espTx.iW++] = 0xD2;
-//					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xD2;
-//					espTx.buf[espTx.iW++] = espTx.cks;
-//					readyToSend = 0;
-//					parte1=0;
-//					if(TIMECONFIG)
-//						TIMECONFIG = 0;
-//					//	timeout2 = 15;
-//				}
-//			break;
+			case 0xD2:
+				if(parte1){
+					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+					espTx.buf[espTx.iW++] = 'A';
+					espTx.buf[espTx.iW++] = 'T';
+					espTx.buf[espTx.iW++] = '+';
+					espTx.buf[espTx.iW++] = 'C';
+					espTx.buf[espTx.iW++] = 'I';
+					espTx.buf[espTx.iW++] = 'P';
+					espTx.buf[espTx.iW++] = 'S';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'D';
+					espTx.buf[espTx.iW++] = '=';
+					espTx.buf[espTx.iW++] = '9';
+					//espTx.buf[espTx.iW++] = '0';
+					espTx.buf[espTx.iW++] = '\r';
+					espTx.buf[espTx.iW++] = '\n';
+					bytesToSend = 9;
+					timeout4 = 2;
+					//espTx.iW += 11;
+					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+					//espTx.iW += 3;
+					//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+					//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
+					//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+					//	parte1=0;
+					//	timeout2 = 10;
+					//	readyToSend = 0;
+				}
+				else {
+					//memcpy(&espTx.buf[espTx.iW], "test", 4);
+					//espTx.iW += 4;
+					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					espTx.buf[espTx.iW++] = 'U';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'R';
+					espTx.buf[espTx.iW++] = 0x02;
+					espTx.buf[espTx.iW++] = 0x00;
+					espTx.buf[espTx.iW++] = ':';
+					espTx.buf[espTx.iW++] = 0xD2;
+					espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xD2;
+					espTx.buf[espTx.iW++] = espTx.cks;
+					readyToSend = 0;
+					parte1=0;
+					if(TIMECONFIG)
+						TIMECONFIG = 0;
+					timeout4 = 2;
+					//	timeout2 = 15;
+				}
+			break;
 		}
 		readyToSend = 0;
 	}
@@ -999,6 +1005,7 @@ void DecoEsp(void){
 						//readyToSend = 1;
 					}
 				}
+				test[iii++] = espRx.buf[espRx.iR];
 				espRx.iR++;
 			break;
 			case 5:
@@ -1042,7 +1049,7 @@ void DecoEsp(void){
 				espRx.iR++;
 			break;
 		}
-		test[iii++] = espRx.buf[espRx.iR];
+
 	break;
 	case 7:
 		switch(espRx.header){
@@ -1222,7 +1229,7 @@ void RecibirComandoESP(uint8_t comando){
 			readyToSend = 1;
 			parte1 = 1;
 			timemotor = espRx.buf[espRx.iR-1]*100;
-			//CommandUdp(comando);
+			CommandUdp(comando);
 			espRx.header=0;
 			//TODOOOK = 0;
 			//algo
@@ -1474,6 +1481,9 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
   if(timeout3){
 	  timeout3--;
   }
+  if(timeout4){
+  	  timeout4--;
+    }
 
   /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
      Store immediate overlapping exception return operation might vector to incorrect interrupt. */

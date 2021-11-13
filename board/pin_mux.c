@@ -150,6 +150,14 @@ BOARD_InitPins:
   - {pin_num: '35', peripheral: FTM0, signal: 'CH, 6', pin_signal: PTA1/UART0_RX/FTM0_CH6/JTAG_TDI/EZP_DI}
   - {pin_num: '64', peripheral: GPIOB, signal: 'GPIO, 18', pin_signal: PTB18/CAN0_TX/FTM2_CH0/I2S0_TX_BCLK/FB_AD15/FTM2_QD_PHA, direction: OUTPUT, gpio_init_state: 'true'}
   - {pin_num: '65', peripheral: GPIOB, signal: 'GPIO, 19', pin_signal: PTB19/CAN0_RX/FTM2_CH1/I2S0_TX_FS/FB_OE_b/FTM2_QD_PHB, direction: OUTPUT, gpio_init_state: 'true'}
+  - {pin_num: '55', peripheral: ADC0, signal: 'SE, 12', pin_signal: ADC0_SE12/PTB2/I2C0_SCL/UART0_RTS_b/ENET0_1588_TMR0/FTM0_FLT3}
+  - {pin_num: '56', peripheral: ADC0, signal: 'SE, 13', pin_signal: ADC0_SE13/PTB3/I2C0_SDA/UART0_CTS_b/UART0_COL_b/ENET0_1588_TMR1/FTM0_FLT0}
+  - {pin_num: '14', peripheral: ADC0, signal: 'SE, 1', pin_signal: ADC0_DP1}
+  - {pin_num: '15', peripheral: ADC0, signal: 'SE, 20', pin_signal: ADC0_DM1}
+  - {pin_num: '58', peripheral: ADC1, signal: 'SE, 14', pin_signal: ADC1_SE14/PTB10/SPI1_PCS0/UART3_RX/FB_AD19/FTM0_FLT1}
+  - {pin_num: '59', peripheral: ADC1, signal: 'SE, 15', pin_signal: ADC1_SE15/PTB11/SPI1_SCK/UART3_TX/FB_AD18/FTM0_FLT2}
+  - {pin_num: '16', peripheral: ADC1, signal: 'SE, 1', pin_signal: ADC1_DP1}
+  - {pin_num: '17', peripheral: ADC1, signal: 'SE, 20', pin_signal: ADC1_DM1}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
 /* clang-format on */
@@ -204,11 +212,23 @@ void BOARD_InitPins(void)
                       * is configured as a digital output. */
                      | PORT_PCR_DSE(kPORT_LowDriveStrength));
 
+    /* PORTB10 (pin 58) is configured as ADC1_SE14 */
+    PORT_SetPinMux(PORTB, 10U, kPORT_PinDisabledOrAnalog);
+
+    /* PORTB11 (pin 59) is configured as ADC1_SE15 */
+    PORT_SetPinMux(PORTB, 11U, kPORT_PinDisabledOrAnalog);
+
     /* PORTB18 (pin 64) is configured as PTB18 */
     PORT_SetPinMux(BOARD_RST_ESP_PORT, BOARD_RST_ESP_PIN, kPORT_MuxAsGpio);
 
     /* PORTB19 (pin 65) is configured as PTB19 */
     PORT_SetPinMux(BOARD_EN_ESP_PORT, BOARD_EN_ESP_PIN, kPORT_MuxAsGpio);
+
+    /* PORTB2 (pin 55) is configured as ADC0_SE12 */
+    PORT_SetPinMux(BOARD_ADC0_SE12_PORT, BOARD_ADC0_SE12_PIN, kPORT_PinDisabledOrAnalog);
+
+    /* PORTB3 (pin 56) is configured as ADC0_SE13 */
+    PORT_SetPinMux(PORTB, 3U, kPORT_PinDisabledOrAnalog);
 
     /* PORTC16 (pin 90) is configured as UART3_RX */
     PORT_SetPinMux(BOARD_TMR_1588_0_PORT, BOARD_TMR_1588_0_PIN, kPORT_MuxAlt3);

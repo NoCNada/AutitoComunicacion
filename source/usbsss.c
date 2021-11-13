@@ -58,7 +58,7 @@ const char CIFSR[]={"AT+CIFSR\r\n"};
 const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
 //Comando CIPSTART Establish UDP Transmition -- Establece transmision UDP
 const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 const char CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 //CIPSTART 2
@@ -103,11 +103,11 @@ const char ANS_CWJAP_PREGUNTA[] = {"AT+CWJAP?\r\nNo AP\r\n\r\nOK\r\n"};//24
 const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
 //Respuesta CIPSTART
 const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
 
 const char ANS_CIPSTART_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','9','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//70
 
 
@@ -208,14 +208,14 @@ typedef union {
 #define DESCONECTADO flag1.bit.b7 //RESET ESP
 #define PrioridadRed1 flag2.bit.b0
 #define REENVIARMENSAJE flag2.bit.b1
-#define PrimerMensaje flag2.bit.b1
+
 #define ALIVESENTESP flag2.bit.b2
 #define MOTORSENTESP flag2.bit.b3
 #define MOTORSOFF flag2.bit.b4
 #define TIMECONFIG flag2.bit.b5
 #define ALIVE30S flag2.bit.b6
-
-
+#define ADCSENT flag2.bit.b7
+#define PrimerMensaje flag3.bit.b1
 
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
@@ -225,9 +225,10 @@ typedef union {
 
 
 // Variables Globales
-volatile _sFlag flag1, flag2;
-_sWork PWM1, PWM2;
+volatile _sFlag flag1, flag2, flag3;
+_sWork PWM1, PWM2,bufADC[9];
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0, timeout4;
+uint8_t timeoutADC = 10;
 uint16_t timeout2 = 0, timeoutPrueba = 0, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
@@ -236,6 +237,11 @@ uint32_t g_systickCounter;
 uint8_t test[256];
 uint8_t NADADEPRUEBAS = 1;
 uint8_t iii = 0, CommandoPepe = 0, iiiii = 0;
+uint8_t iwBufADC;
+volatile uint8_t statusanalog = 0;
+
+
+
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -274,6 +280,10 @@ int main(void) {
     /* Init FSL debug console. */
     BOARD_InitDebugConsole();
 #endif
+
+   // ADC16_Deinit(ADC0);
+
+
     	ringTx.buf=txBuf;
         ringRx.buf=rxBuf;
         espTx.buf=txEspBuf;
@@ -309,7 +319,7 @@ int main(void) {
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
-    PrioridadRed1 = 1;
+    PrioridadRed1 = 0;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -332,9 +342,6 @@ int main(void) {
     				CommandUdp(0xF0);
     			break;
     			case 3:
-//    				if(!timeoutPrueba && !ALIVESENTESP){
-//    					CommandUdp(0xF0);
-//    				}
 
     			break;
         	}
@@ -378,14 +385,24 @@ int main(void) {
     		CommandUdp(0xF0);
     	}
     	if(MOTORSENTESP){
-
     		CommandUdp(0xD0);
     	}
     	if(TIMECONFIG){
 
     		CommandUdp(0xD2);
     	}
-
+    	if(ADCSENT){
+    		CommandUdp(0xA1);
+    	}
+    	if(!timeoutADC){
+    		ADCSENT = 1;
+    		statusAT = 6;
+    		readyToSend = 1;
+    		parte1 = 1;
+    		CommandUdp(0xA1);
+    		espRx.header=0;
+    		timeoutADC = 10;
+    	}
 
     	if(!timeoutmotor && MOTORSOFF){
     		MOTORSOFF = 0;
@@ -584,6 +601,75 @@ void CommandUdp(uint8_t comando){
 					//	timeout2 = 15;
 				}
 			break;
+			case 0xA1:
+				if(parte1){
+					//memcpy(&espTx.buf[espTx.iW], CIPSEND, 11);
+					espTx.buf[espTx.iW++] = 'A';
+					espTx.buf[espTx.iW++] = 'T';
+					espTx.buf[espTx.iW++] = '+';
+					espTx.buf[espTx.iW++] = 'C';
+					espTx.buf[espTx.iW++] = 'I';
+					espTx.buf[espTx.iW++] = 'P';
+					espTx.buf[espTx.iW++] = 'S';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'D';
+					espTx.buf[espTx.iW++] = '=';
+					espTx.buf[espTx.iW++] = '3';
+					espTx.buf[espTx.iW++] = '7';
+					//espTx.buf[espTx.iW++] = '0';
+					espTx.buf[espTx.iW++] = '\r';
+					espTx.buf[espTx.iW++] = '\n';
+					bytesToSend = 37;
+					timeout4 = 1;
+					//espTx.iW += 11;
+					//memcpy(&espTx.buf[espTx.iW], "4\r\n", 3);
+					//espTx.iW += 3;
+					//	const char CIPSEND_4BYTES2[]={"Recv 4 bytes\r\n\r\nSEND OK\r\n"};//25
+					//	const char CIPSEND_4BYTES55[]={"AT+CIPSEND=4\r\n\r\nOK\r\n>"};
+					//	memcpy(&CIPSEND_NBYTES,"AT+CIPSEND=4\r\n\r\nOK\r\n>",20);
+					//	parte1=0;
+					//	timeout2 = 10;
+					//	readyToSend = 0;
+				}
+				else {
+					//memcpy(&espTx.buf[espTx.iW], "test", 4);
+					//espTx.iW += 4;
+					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
+					bufADC[8].f = 0;
+					espTx.buf[espTx.iW++] = 'U';
+					espTx.buf[espTx.iW++] = 'N';
+					espTx.buf[espTx.iW++] = 'E';
+					espTx.buf[espTx.iW++] = 'R';
+					espTx.buf[espTx.iW++] = 0x02;
+					espTx.buf[espTx.iW++] = 0x00;
+					espTx.buf[espTx.iW++] = ':';
+					espTx.buf[espTx.iW++] = 0xA1; //7 + 9*4 =  ------ 36 + 1 = 37
+					for(uint8_t i = 0; i<9; i++){
+						for (uint8_t j = 0; j < 4; j++) {
+							espTx.buf[espTx.iW++] = bufADC[i].i8[j];
+						}
+					}
+					espTx.cks=0;
+					for(uint8_t i=espTx.iR; i<espTx.iW; i++) {
+						espTx.cks^=espTx.buf[i];
+						//pc.printf("%d - %x - %d   v: %d \n",i,cks,cks,tx[i]);
+					}
+					if(espTx.cks>0)
+						espTx.buf[espTx.iW++]=espTx.cks;
+
+
+					//espTx.cks = 'U'^'N'^'E'^'R'^0x02^0x00^':'^0xD2;
+					//espTx.buf[espTx.iW++] = espTx.cks;
+					readyToSend = 0;
+					parte1=0;
+					if(ADCSENT)
+						ADCSENT = 0;
+					timeout4 = 1;
+					timeoutADC = 10;
+					//	timeout2 = 15;
+				}
+				break;
 		}
 		readyToSend = 0;
 	}
@@ -1453,6 +1539,115 @@ void UART3_SERIAL_RX_TX_IRQHANDLER(void) {
   #endif
 }
 
+
+/* ADC0_IRQn interrupt handler */
+void ADC0_IRQHANDLER(void) {
+  /* Array of result values*/
+//  uint32_t result_values[2] = {0};
+  /* Get flags for each group */
+//  for ( int i=0; i<2; i++){
+//  uint32_t status = ADC16_GetChannelStatusFlags(ADC0_PERIPHERAL, i);
+//  	if ( status == kADC16_ChannelConversionDoneFlag){
+//  		result_values[i] = ADC16_GetChannelConversionValue(ADC0_PERIPHERAL, i);
+//  	}
+//  }
+
+  /* Place your code here */
+	bufADC[iwBufADC++].i32 = ADC16_GetChannelConversionValue(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP);
+  /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
+     Store immediate overlapping exception return operation might vector to incorrect interrupt. */
+  #if defined __CORTEX_M && (__CORTEX_M == 4U)
+    __DSB();
+  #endif
+}
+
+/* ADC1_IRQn interrupt handler */
+void ADC1_IRQHANDLER(void) {
+//  /* Array of result values*/
+//  uint32_t result_values[2] = {0};
+//  /* Get flags for each group */
+//  for ( int i=0; i<2; i++){
+//  uint32_t status = ADC16_GetChannelStatusFlags(ADC1_PERIPHERAL, i);
+//  	if ( status == kADC16_ChannelConversionDoneFlag){
+//  		result_values[i] = ADC16_GetChannelConversionValue(ADC1_PERIPHERAL, i);
+//  	}
+//  }
+
+  /* Place your code here */
+
+
+	bufADC[iwBufADC++].i32 = ADC16_GetChannelConversionValue(ADC1_PERIPHERAL, ADC1_CH0_CONTROL_GROUP);
+
+
+  /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
+     Store immediate overlapping exception return operation might vector to incorrect interrupt. */
+  #if defined __CORTEX_M && (__CORTEX_M == 4U)
+    __DSB();
+  #endif
+}
+
+
+
+/* PIT1_IRQn interrupt handler */
+void PIT_CHANNEL_1_IRQHANDLER(void) {
+  uint32_t intStatus;
+  /* Reading all interrupt flags of status register */
+  intStatus = PIT_GetStatusFlags(PIT_PERIPHERAL, PIT_CHANNEL_1);
+  PIT_ClearStatusFlags(PIT_PERIPHERAL, PIT_CHANNEL_1, intStatus);
+
+  /* Place your code here */
+  switch(statusanalog){
+  case 0:
+	  ADC16_SetChannelConfig(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP, &ADC0_channelsConfig[0]);
+	  statusanalog++;
+	  break;
+  case 1:
+	  ADC16_SetChannelConfig(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP, &ADC0_channelsConfig[1]);
+	  statusanalog++;
+	  break;
+  case 2:
+	  ADC16_SetChannelConfig(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP, &ADC0_channelsConfig[2]);
+	  statusanalog++;
+	  break;
+  case 3:
+	  ADC16_SetChannelConfig(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP, &ADC0_channelsConfig[3]);
+	  statusanalog++;
+	  break;
+  case 4:
+	  ADC16_SetChannelConfig(ADC1_PERIPHERAL, ADC1_CH1_CONTROL_GROUP, &ADC1_channelsConfig[0]);
+	  //ADC16_SetChannelConfig(ADC0_PERIPHERAL, ADC0_CH0_CONTROL_GROUP, &ADC0_channelsConfig[0]);
+	  statusanalog++;
+	  break;
+  case 5:
+	  ADC16_SetChannelConfig(ADC1_PERIPHERAL, ADC1_CH1_CONTROL_GROUP, &ADC1_channelsConfig[1]);
+	  statusanalog++;
+	  break;
+  case 6:
+	  ADC16_SetChannelConfig(ADC1_PERIPHERAL, ADC1_CH1_CONTROL_GROUP, &ADC1_channelsConfig[2]);
+	  statusanalog++;
+	  break;
+  case 7:
+	  ADC16_SetChannelConfig(ADC1_PERIPHERAL, ADC1_CH1_CONTROL_GROUP, &ADC1_channelsConfig[3]);
+	  statusanalog++;
+	  break;
+  default:
+	  statusanalog = 0;
+	  break;
+  }
+
+
+  if(iwBufADC >= 8){
+	  iwBufADC = 0;
+  }
+  /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
+     Store immediate overlapping exception return operation might vector to incorrect interrupt. */
+  #if defined __CORTEX_M && (__CORTEX_M == 4U)
+    __DSB();
+  #endif
+}
+
+
+
 /* PIT0_IRQn interrupt handler */
 void PIT_CHANNEL_0_IRQHANDLER(void) {
   uint32_t intStatus;
@@ -1485,9 +1680,17 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
   	  timeout4--;
     }
 
+
+  if(timeoutADC && PrimerMensaje){
+	  timeoutADC--;
+  }
+
+
   /* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F
      Store immediate overlapping exception return operation might vector to incorrect interrupt. */
   #if defined __CORTEX_M && (__CORTEX_M == 4U)
     __DSB();
   #endif
 }
+
+

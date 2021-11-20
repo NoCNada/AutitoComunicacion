@@ -58,7 +58,7 @@ const char CIFSR[]={"AT+CIFSR\r\n"};
 const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
 //Comando CIPSTART Establish UDP Transmition -- Establece transmision UDP
 const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','3','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 const char CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','8','6','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 //CIPSTART 2
@@ -103,11 +103,11 @@ const char ANS_CWJAP_PREGUNTA[] = {"AT+CWJAP?\r\nNo AP\r\n\r\nOK\r\n"};//24
 const char ANS_CIPMUX[]={"AT+CIPMUX=0\r\n\r\nOK\r\n"};
 //Respuesta CIPSTART
 const char ANS_CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','3','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//59
 
 const char ANS_CIPSTART_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','1','.','8','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','1','.','3','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//70
 
 
@@ -143,7 +143,7 @@ const char CIPSEND_2[]={"\r\n\r\nOK\r\n>"};//9
 const char CIPSEND_3[]={"Recv "};//5
 const char CIPSEND_4[]={" bytes\r\n\r\nSEND OK\r\n"};//19
 const char IPD[]={'+','I','P','D',','};
-
+const int POS_SENSORES[]={-5,-4,-3,-2,-1,1,2,3,4,5};
 
 /* TODO: insert other include files here. */
 
@@ -217,6 +217,9 @@ typedef union {
 #define ADCSENT flag2.bit.b7
 #define PrimerMensaje flag3.bit.b1
 #define ReceiveMessage flag3.bit.b2
+#define EnviarADCS flag3.bit.b3
+//#define CalibrarADCS flag3.bit.b4
+
 
 
 #define INITESPCMD 0xC0 //Inicializar ESP
@@ -226,11 +229,12 @@ typedef union {
 
 
 
+
 // Variables Globales
 volatile _sFlag flag1, flag2, flag3;
-_sWork PWM1, PWM2,bufADC[9];
+_sWork PWM1, PWM2,bufADC[9],bufADCCAL[9];
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0, timeout4;
-uint8_t timeoutADC = 50;
+uint8_t timeoutADC = 50, timeouterror = 5;
 uint16_t timeout2 = 0, timeoutPrueba = 0, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
@@ -241,9 +245,10 @@ uint8_t NADADEPRUEBAS = 1;
 uint8_t iii = 0, CommandoPepe = 0, iiiii = 0;
 uint8_t iwBufADC;
 volatile uint8_t statusanalog = 0;
-
-
-
+float  Constante_Relacion[8];
+float NUMERADOR, DENOMINADOR, cuenta, fx2_x1,fx2_x3,x2_x1,x2_x3,x2_x1_Cuadrado,x2_x3_Cuadrado;
+uint8_t CalibrarADCS=0, YACALIBRADO=0,sensors = 0,posSensor,posSensorDerecha,posSensorIzquierda;
+int valorsensormin = 0;
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -257,6 +262,10 @@ void Delay_ms(uint32_t n);
 uint8_t BusyESP(uint8_t c);
 void resetESP(void);
 void RecibirComandoESP(uint8_t comando);
+void ADC_Calibracion();
+void EncontrarLinea();
+
+
 
 void SysTick_Handler(void){
 	if(g_systickCounter != 0U){
@@ -321,7 +330,8 @@ int main(void) {
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
-    PrioridadRed1 = 1;
+    PrioridadRed1 = 0;
+    EnviarADCS = 0;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -395,14 +405,21 @@ int main(void) {
     	if(ADCSENT){
     		CommandUdp(0xA1);
     	}
-    	if((!timeoutADC) && (!ALIVESENTESP || !MOTORSENTESP || !TIMECONFIG)){
-    		ADCSENT = 1;
-    		statusAT = 6;
-    		readyToSend = 1;
-    		parte1 = 1;
-    		CommandUdp(0xA1);
-    		espRx.header=0;
+    	if(!timeoutADC){
+    		if((!ALIVESENTESP || !MOTORSENTESP || !TIMECONFIG) &&(EnviarADCS)){
+    			EncontrarLinea();
+    			ADCSENT = 1;
+    			statusAT = 6;
+    			readyToSend = 1;
+    			parte1 = 1;
+    			CommandUdp(0xA1);
+    			espRx.header=0;
+    		}
     		timeoutADC = 50;
+    	}
+    	if(CalibrarADCS && !YACALIBRADO){
+    		ADC_Calibracion();
+    		YACALIBRADO = 1;
     	}
 
     	if(!timeoutmotor && MOTORSOFF){
@@ -412,7 +429,9 @@ int main(void) {
     	    FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
     	    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
     	}
-
+//    	if(timeouterror){
+//    		EncontrarLinea();
+//    	}
     	i++ ;
         /* 'Dummy' NOP to allow source level single stepping of
             tight while() loop */
@@ -420,6 +439,41 @@ int main(void) {
     }
     return 0 ;
 }
+
+void EncontrarLinea(){
+	float aux[10];
+	valorsensormin = bufADC[0].i32;
+	while(sensors < 8){
+		if(valorsensormin > bufADC[sensors].i32){
+			valorsensormin = bufADC[sensors].i32;
+			posSensor = sensors;
+		}
+		aux[sensors+1]=bufADC[sensors].i32;
+		sensors++;
+	}
+
+	sensors = 0;
+	aux[0]=aux[2];
+	aux[9]=aux[7];
+
+	posSensorDerecha = posSensor+1;
+	posSensorIzquierda = posSensor-1;
+	fx2_x1 = aux[posSensor]-aux[posSensorIzquierda];
+	fx2_x3 = aux[posSensor]-aux[posSensorDerecha];
+	x2_x1 = POS_SENSORES[posSensor]-POS_SENSORES[posSensorIzquierda];
+	x2_x3 = POS_SENSORES[posSensor]-POS_SENSORES[posSensorDerecha];
+	x2_x1_Cuadrado = (x2_x1)*(x2_x1);
+	x2_x3_Cuadrado = (x2_x3)*(x2_x3);
+	NUMERADOR = (x2_x1_Cuadrado*fx2_x3)-(x2_x3_Cuadrado*fx2_x1);
+	DENOMINADOR = 2*((x2_x1*fx2_x3)-(x2_x3*fx2_x1));
+	cuenta = NUMERADOR/DENOMINADOR;
+	if(DENOMINADOR != 0){
+		bufADC[8].f = POS_SENSORES[posSensor] - cuenta;
+	}
+
+
+}
+
 
 void resetESP(void){
 	//GPIO_PortToggle(BOARD_LED_GPIO, 1u << BOARD_LED_GPIO_PIN);
@@ -639,7 +693,7 @@ void CommandUdp(uint8_t comando){
 					//memcpy(&espTx.buf[espTx.iW], "test", 4);
 					//espTx.iW += 4;
 					//memcpy(&CIPSEND_NBYTES,"Recv 4 bytes\r\n\r\nSEND OK\r\n",25);
-					bufADC[8].f = 0;
+					//bufADC[8].f = 0;
 					espTx.buf[espTx.iW++] = 'U';
 					espTx.buf[espTx.iW++] = 'N';
 					espTx.buf[espTx.iW++] = 'E';
@@ -648,6 +702,22 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = 0x00;
 					espTx.buf[espTx.iW++] = ':';
 					espTx.buf[espTx.iW++] = 0xA1; //7 + 9*4 =  ------ 36 + 1 = 37
+					//36
+					//ADC_Calibracion();
+			    	if(CalibrarADCS && !YACALIBRADO){
+			    		ADC_Calibracion();
+			    		YACALIBRADO = 1;
+			    	}
+					if(CalibrarADCS){
+						for(uint8_t i = 1; i<8; i++){
+							bufADC[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
+						}
+					}
+//					for (uint8_t i = 1; i < 8; i++) {
+//							Constante_Relacion[i] = (bufADC[0].f)/(bufADC[i].f);
+//							bufADC[i].f = (bufADC[i].f)*(Constante_Relacion[i]);
+//						}
+//						bufADCCAL[0].i32=bufADC[0].i32;
 					for(uint8_t i = 0; i<9; i++){
 						for (uint8_t j = 0; j < 4; j++) {
 							espTx.buf[espTx.iW++] = bufADC[i].i8[j];
@@ -675,6 +745,16 @@ void CommandUdp(uint8_t comando){
 	}
 
 }
+
+void ADC_Calibracion(){
+
+	for (uint8_t i = 1; i < 8; i++) {
+		Constante_Relacion[i] = (bufADC[0].f)/(bufADC[i].f);
+		//bufADCCAL[i].f = (bufADC[i].f)*(Constante_Relacion[i]);
+	}
+	//bufADCCAL[0].i32=bufADC[0].i32;
+}
+
 
 void initESP(void){
 	if(readyToSend)
@@ -1327,6 +1407,13 @@ void RecibirComandoESP(uint8_t comando){
 //		case MOTORSONOCMD:
 //			MOTORSSENT = 1;
 //		break;
+		case 0xA5:
+			CalibrarADCS = !CalibrarADCS;
+			YACALIBRADO = 0;
+		break;
+		case 0xB0:
+			EnviarADCS = !EnviarADCS;
+		break;
 	}
 }
 
@@ -1685,7 +1772,7 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
     }
 
 
-  if(timeoutADC && PrimerMensaje){
+  if(timeoutADC){
 	  timeoutADC--;
   }
 

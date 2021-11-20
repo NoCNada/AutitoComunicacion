@@ -1304,7 +1304,7 @@
                            <setting name="clockSource" value="kFTM_SystemClock"/>
                            <setting name="clockSourceFreq" value="BOARD_BootClockVLPR"/>
                            <setting name="timerPrescaler" value="1"/>
-                           <setting name="timerOutputFrequency" value="1.0 kHz"/>
+                           <setting name="timerOutputFrequency" value="1.0 KHz"/>
                            <setting name="systemClockSource" value="BusInterfaceClock"/>
                            <setting name="systemClockSourceFreq" value="mirrored_value"/>
                            <setting name="faultMode" value="kFTM_Fault_Disable"/>

@@ -60,7 +60,7 @@ const char CIPMUX[]={"AT+CIPMUX=0\r\n"};
 const char CIPSTART[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
 		'"',',','"','1','9','2','.','1','6','8','.','1','.','3','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 const char CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','8','6','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r','\n'};
 //CIPSTART 2
 const char CIPSTART2222[]={",30015,3020\r\n"};
 //Comando CIPSEND Sends data -- Enviar datos
@@ -112,10 +112,10 @@ const char ANS_CIPSTART_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','='
 
 
 const char ANS_CIPSTART2[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','8','6','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','C','O','N','N','E','C','T','\r','\n','\r','\n','O','K','\r','\n'};//61
 const char ANS_CIPSTART2_ERROR[]={'A','T','+','C','I','P','S','T','A','R','T','=','"','U','D','P',
-		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','8','6','"',',','3','0','0','1','5',',','3','0','1','5','\r',
+		'"',',','"','1','9','2','.','1','6','8','.','0','.','1','3','5','"',',','3','0','0','1','5',',','3','0','1','5','\r',
 		'\n','A','L','R','E','A','D','Y',' ','C','O','N','N','E','C','T','E','D','\r','\n','\r','\n','E','R','R','O','R','\r','\n'};//72
 
 //AT+CIPSTART="UDP","192.168.1.4",30015,3015/r/n
@@ -263,7 +263,7 @@ uint8_t BusyESP(uint8_t c);
 void resetESP(void);
 void RecibirComandoESP(uint8_t comando);
 void ADC_Calibracion();
-void EncontrarLinea();
+void EncontrarLinea(_sWork *BUFADC);
 
 
 
@@ -407,7 +407,16 @@ int main(void) {
     	}
     	if(!timeoutADC){
     		if((!ALIVESENTESP || !MOTORSENTESP || !TIMECONFIG) &&(EnviarADCS)){
-    			EncontrarLinea();
+    			if(CalibrarADCS){
+    				bufADCCAL[0].f = bufADC[0].f;
+    				for(uint8_t i = 1; i<8; i++){
+    					bufADCCAL[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
+    				}
+    				EncontrarLinea(bufADCCAL);
+    			}
+    			else{
+    				EncontrarLinea(bufADC);
+    			}
     			ADCSENT = 1;
     			statusAT = 6;
     			readyToSend = 1;
@@ -440,15 +449,18 @@ int main(void) {
     return 0 ;
 }
 
-void EncontrarLinea(){
+void EncontrarLinea(_sWork *BUFADC){
 	float aux[10];
-	valorsensormin = bufADC[0].i32;
+
+	valorsensormin = BUFADC[0].i32;
+	posSensor = 1;
+	//valorsensormin = bufADC[0].i32;
 	while(sensors < 8){
-		if(valorsensormin > bufADC[sensors].i32){
-			valorsensormin = bufADC[sensors].i32;
-			posSensor = sensors;
+		if(valorsensormin > BUFADC[sensors].i32){
+			valorsensormin = BUFADC[sensors].i32;
+			posSensor = sensors+1;
 		}
-		aux[sensors+1]=bufADC[sensors].i32;
+		aux[sensors+1]=BUFADC[sensors].i32;
 		sensors++;
 	}
 
@@ -458,6 +470,7 @@ void EncontrarLinea(){
 
 	posSensorDerecha = posSensor+1;
 	posSensorIzquierda = posSensor-1;
+
 	fx2_x1 = aux[posSensor]-aux[posSensorIzquierda];
 	fx2_x3 = aux[posSensor]-aux[posSensorDerecha];
 	x2_x1 = POS_SENSORES[posSensor]-POS_SENSORES[posSensorIzquierda];
@@ -468,7 +481,7 @@ void EncontrarLinea(){
 	DENOMINADOR = 2*((x2_x1*fx2_x3)-(x2_x3*fx2_x1));
 	cuenta = NUMERADOR/DENOMINADOR;
 	if(DENOMINADOR != 0){
-		bufADC[8].f = POS_SENSORES[posSensor] - cuenta;
+		BUFADC[8].f = -(POS_SENSORES[posSensor] - cuenta);
 	}
 
 
@@ -712,6 +725,7 @@ void CommandUdp(uint8_t comando){
 						for(uint8_t i = 1; i<8; i++){
 							bufADC[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
 						}
+						bufADC[8].f=bufADCCAL[8].f;
 					}
 //					for (uint8_t i = 1; i < 8; i++) {
 //							Constante_Relacion[i] = (bufADC[0].f)/(bufADC[i].f);

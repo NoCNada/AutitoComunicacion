@@ -219,8 +219,9 @@ typedef union {
 #define ReceiveMessage flag3.bit.b2
 #define EnviarADCS flag3.bit.b3
 //#define CalibrarADCS flag3.bit.b4
-
-
+#define STARTLINE flag3.bit.b5
+#define timeact	flag3.bit.b6
+#define lineant flag3.bit.b7
 
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
@@ -231,11 +232,11 @@ typedef union {
 
 
 // Variables Globales
-volatile _sFlag flag1, flag2, flag3;
-_sWork PWM1, PWM2,bufADC[9],bufADCCAL[9];
+volatile _sFlag flag1, flag2, flag3, flag4;
+_sWork PWM1, PWM2,bufADC[9],bufADCCAL[9],PWM1BASE,PWM2BASE,AUXTOSEND[9],errorcito,kp,kd,ki;
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0, timeout4;
-uint8_t timeoutADC = 50, timeouterror = 5;
-uint16_t timeout2 = 0, timeoutPrueba = 0, timeoutmotor = 0, timemotor = 150;
+uint8_t timeoutADC = 50, timeoutADCError = 3, timeoutPID = 3, timeoutStop = 30;
+uint16_t timeout2 = 0, timeoutPrueba = 2, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
 uint8_t bytesToSend = 0, bytesToSend_aux = 0;
@@ -245,10 +246,12 @@ uint8_t NADADEPRUEBAS = 1;
 uint8_t iii = 0, CommandoPepe = 0, iiiii = 0;
 uint8_t iwBufADC;
 volatile uint8_t statusanalog = 0;
-float  Constante_Relacion[8];
+float  Constante_Relacion[8],integral = 0,proporcional = 0,derivativo = 0,lastError = 0,Error = 0, cuentapid=0;
 float NUMERADOR, DENOMINADOR, cuenta, fx2_x1,fx2_x3,x2_x1,x2_x3,x2_x1_Cuadrado,x2_x3_Cuadrado;
 uint8_t CalibrarADCS=0, YACALIBRADO=0,sensors = 0,posSensor,posSensorDerecha,posSensorIzquierda;
 int valorsensormin = 0;
+float valorsensormax = 0;
+
 
 void LeerCabecera(uint8_t ind);
 void RecibirDatos(uint8_t head);
@@ -264,6 +267,9 @@ void resetESP(void);
 void RecibirComandoESP(uint8_t comando);
 void ADC_Calibracion();
 void EncontrarLinea(_sWork *BUFADC);
+void CalibrarValores(void);
+void CalcularPID(uint32_t PWM1base, uint32_t PWM2base);
+void StopLinea(void);
 
 
 
@@ -314,24 +320,27 @@ int main(void) {
     }
 
 //    FTM_StopTimer(FTM0_PERIPHERAL);
-//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 3000;
+//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 3100;
 //    FTM0_PERIPHERAL->CONTROLS[1].CnV = 3999;
 //    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
 //
-//    Delay_ms(2000);
+//    Delay_ms(1000);
 //
 //    FTM_StopTimer(FTM0_PERIPHERAL);
 //    FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
 //    FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
 //    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
-//    Delay_ms(10000);
+//    Delay_ms(1000);
 
             /* Init output LED GPIO. */
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
          //   GPIO_PinInit(BOARD_RST_ESP_GPIO, BOARD_RST_ESP_PIN, config)
     /* Force the counter to be placed into memory. */
-    PrioridadRed1 = 0;
+    PrioridadRed1 = 1;
     EnviarADCS = 0;
+    kp.f = 100;
+	kd.f = 0;
+	ki.f = 0;
     volatile static int i = 0 ;
     /* Enter an infinite loop, just incrementing a counter. */
     while(1) {
@@ -407,16 +416,6 @@ int main(void) {
     	}
     	if(!timeoutADC){
     		if((!ALIVESENTESP || !MOTORSENTESP || !TIMECONFIG) &&(EnviarADCS)){
-    			if(CalibrarADCS){
-    				bufADCCAL[0].f = bufADC[0].f;
-    				for(uint8_t i = 1; i<8; i++){
-    					bufADCCAL[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
-    				}
-    				EncontrarLinea(bufADCCAL);
-    			}
-    			else{
-    				EncontrarLinea(bufADC);
-    			}
     			ADCSENT = 1;
     			statusAT = 6;
     			readyToSend = 1;
@@ -431,7 +430,26 @@ int main(void) {
     		YACALIBRADO = 1;
     	}
 
-    	if(!timeoutmotor && MOTORSOFF){
+    	if(!timeoutADCError){
+    		if(CalibrarADCS){
+    			CalibrarValores();
+    			EncontrarLinea(bufADCCAL);
+    		}
+    		else{
+    			EncontrarLinea(bufADC);
+    		}
+    		timeoutADCError = 3;
+    	}
+
+    	if(!timeoutPID && STARTLINE){
+    		CalcularPID(PWM1.u32,PWM2.u32);
+    		timeoutPID = 3;
+    	}
+    	if(STARTLINE && !timeoutPrueba){
+    		StopLinea();
+    		timeoutPrueba = 2;
+    	}
+    	if((!timeoutmotor && MOTORSOFF) && !STARTLINE){
     		MOTORSOFF = 0;
     	    FTM_StopTimer(FTM0_PERIPHERAL);
     	    FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
@@ -447,6 +465,93 @@ int main(void) {
         __asm volatile ("nop");
     }
     return 0 ;
+}
+
+void StopLinea(void){
+	volatile uint8_t i = 0;
+	for (i = 0; i < 8; i++) {
+		if(bufADCCAL[i].f < valorsensormax){
+			timeact = 0;
+			lineant = 0;
+			timeoutStop = 0;
+			break;
+		}
+		else{
+			lineant = 1;
+		}
+	}
+	if(!timeact && lineant){
+		timeoutStop = 30;
+		timeact = 1;
+		lineant = 1;
+	}
+	if(!timeoutStop && lineant){
+		//stop
+		MOTORSOFF = 1;
+		timeoutStop = 0;
+		timeact = 0;
+		lineant = 0;
+		STARTLINE = 0;
+	}
+}
+
+
+
+void CalcularPID(uint32_t PWM1base, uint32_t PWM2base){
+	int32_t pwm1b,pwm2b;
+
+	integral += errorcito.f;
+	derivativo = errorcito.f - lastError;
+	cuentapid = (kp.u32 * errorcito.f) + (kd.u32 * derivativo) + (ki.u32 * integral);
+	pwm1b = PWM1base - cuentapid;
+	pwm2b = PWM2base + cuentapid;
+
+	if(pwm1b > 3999){
+		pwm1b = 3999;
+	}
+	if(pwm2b > 3100){
+		pwm2b = 3100;
+	}
+	if(pwm1b < 0){
+		pwm1b = 0;
+	}
+	if(pwm2b < 0){
+		pwm2b = 0;
+	}
+	PWM1BASE.u32 = pwm1b;
+	PWM2BASE.u32 = pwm2b;
+
+	FTM_StopTimer(FTM0_PERIPHERAL);
+	FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1BASE.u16[0]; //ES MAS LENTO
+	//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
+	FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2BASE.u16[0];
+	//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
+	FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+
+	lastError = errorcito.f;
+
+//		integral+=error.f;
+//		derivativo=error.f-lastError;
+//		turn= Kp.f*error.f + Kd.f*derivativo + Ki.f*integral;
+//		pwm1=pwmBase1-turn;
+//		pwm2=pwmBase2+turn;
+//
+//		if(pwm1>200)
+//			pwm1=200;
+//		if(pwm2>200)
+//			pwm2=200;
+//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,pwm1);
+//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,0);
+//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
+//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4,pwm2);
+//		lastError=error.f;
+}
+
+void CalibrarValores(void){
+	bufADCCAL[0].f = bufADC[0].f;
+	for(uint8_t i = 1; i<8; i++){
+		bufADCCAL[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
+	}
 }
 
 void EncontrarLinea(_sWork *BUFADC){
@@ -482,6 +587,7 @@ void EncontrarLinea(_sWork *BUFADC){
 	cuenta = NUMERADOR/DENOMINADOR;
 	if(DENOMINADOR != 0){
 		BUFADC[8].f = -(POS_SENSORES[posSensor] - cuenta);
+		errorcito.f=BUFADC[8].f;
 	}
 
 
@@ -717,15 +823,19 @@ void CommandUdp(uint8_t comando){
 					espTx.buf[espTx.iW++] = 0xA1; //7 + 9*4 =  ------ 36 + 1 = 37
 					//36
 					//ADC_Calibracion();
-			    	if(CalibrarADCS && !YACALIBRADO){
-			    		ADC_Calibracion();
-			    		YACALIBRADO = 1;
-			    	}
+//			    	if(CalibrarADCS && !YACALIBRADO){
+//			    		ADC_Calibracion();
+//			    		YACALIBRADO = 1;
+//			    	}
 					if(CalibrarADCS){
-						for(uint8_t i = 1; i<8; i++){
-							bufADC[i].f= (bufADC[i].f)*(Constante_Relacion[i]);
+						for(uint8_t i = 0; i<9; i++){
+							AUXTOSEND[i].f= bufADCCAL[i].f;
 						}
-						bufADC[8].f=bufADCCAL[8].f;
+					}
+					else{
+						for(uint8_t i = 0; i<9; i++){
+							AUXTOSEND[i].f= bufADC[i].f;
+						}
 					}
 //					for (uint8_t i = 1; i < 8; i++) {
 //							Constante_Relacion[i] = (bufADC[0].f)/(bufADC[i].f);
@@ -734,7 +844,7 @@ void CommandUdp(uint8_t comando){
 //						bufADCCAL[0].i32=bufADC[0].i32;
 					for(uint8_t i = 0; i<9; i++){
 						for (uint8_t j = 0; j < 4; j++) {
-							espTx.buf[espTx.iW++] = bufADC[i].i8[j];
+							espTx.buf[espTx.iW++] = AUXTOSEND[i].i8[j];
 						}
 					}
 					espTx.cks=0;
@@ -766,6 +876,17 @@ void ADC_Calibracion(){
 		Constante_Relacion[i] = (bufADC[0].f)/(bufADC[i].f);
 		//bufADCCAL[i].f = (bufADC[i].f)*(Constante_Relacion[i]);
 	}
+
+	valorsensormax = bufADC[0].f;
+	for (uint8_t i = 1; i < 8; i++) {
+		if(valorsensormax < (bufADC[i].f * Constante_Relacion[i])){
+			valorsensormax = (bufADC[i].f * Constante_Relacion[i]);
+		}
+	}
+	valorsensormax = valorsensormax * 0.75;
+		//valorsensormin = bufADC[0].i32;
+
+
 	//bufADCCAL[0].i32=bufADC[0].i32;
 }
 
@@ -1218,7 +1339,7 @@ void DecoEsp(void){
 						//timeout2 = 50;
 						if(!PrimerMensaje){
 							PrimerMensaje = 1;
-							timeoutPrueba = 3000;
+							//timeoutPrueba = 3000;
 							statusESP++;
 						}
 						if(ADCSENT){
@@ -1376,36 +1497,21 @@ void RecibirComandoESP(uint8_t comando){
 			PWM2.u8[3]=espRx.buf[espRx.iR-1];
 			//test[iiiii] = espRx.buf[CommandoPepe];
 			//if(iiiii > 7){
-				FTM_StopTimer(FTM0_PERIPHERAL);
-				FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[0]; //ES MAS LENTO
+			//FTM_StopTimer(FTM0_PERIPHERAL);
+			//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[0]; //ES MAS LENTO
 			//	FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
-				FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[0];
+			//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[0];
 			//	FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
-				FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
-				MOTORSENTESP = 1;
-				statusAT = 6;
-				readyToSend = 1;
-				parte1 = 1;
-				timeoutmotor = timemotor;
-				MOTORSOFF = 1;
-				iiiii = 0;
-				CommandUdp(comando);
-				espRx.header = 0;
-				//espRx.header=0;
-				//TODOOOK = 0;
-			//}
-
-
-
-//			PWM1.u8[0] = ringRx.buf[head++];
-//			PWM1.u8[1] = ringRx.buf[head++];
-//			PWM1.u8[2] = ringRx.buf[head++];
-//			PWM1.u8[3] = ringRx.buf[head++];
-//			PWM2.u8[0] = ringRx.buf[head++];
-//			PWM2.u8[1] = ringRx.buf[head++];
-//			PWM2.u8[2] = ringRx.buf[head++];
-//			PWM2.u8[3] = ringRx.buf[head++];
-//			MOTORSSENT = 1; //CONFIRMACION QUE RECIBI LOS DATOS
+			//FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+			MOTORSENTESP = 1;
+			statusAT = 6;
+			readyToSend = 1;
+			parte1 = 1;
+			//timeoutmotor = timemotor;
+			//MOTORSOFF = 1;
+			iiiii = 0;
+			CommandUdp(comando);
+			espRx.header = 0;
 		break;
 		case 0xD2:
 			TIMECONFIG = 1;
@@ -1421,12 +1527,48 @@ void RecibirComandoESP(uint8_t comando){
 //		case MOTORSONOCMD:
 //			MOTORSSENT = 1;
 //		break;
+		case 0xD5:
+			STARTLINE = !STARTLINE;
+			if(STARTLINE){
+				FTM_StopTimer(FTM0_PERIPHERAL);
+				FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[0]; //ES MAS LENTO
+				//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
+				FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[0];
+				//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
+				FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+			}
+			else{
+				MOTORSOFF = 1;
+			}
+
+		break;
 		case 0xA5:
 			CalibrarADCS = !CalibrarADCS;
 			YACALIBRADO = 0;
 		break;
 		case 0xB0:
 			EnviarADCS = !EnviarADCS;
+		break;
+		case 0xB3:
+			if(STARTLINE){
+				STARTLINE = 0;
+			}
+			timeoutmotor = timemotor;
+			MOTORSOFF = 1;
+		break;
+		case 0xC7:
+			kp.u8[0]=espRx.buf[espRx.iR-12];
+			kp.u8[1]=espRx.buf[espRx.iR-11];
+			kp.u8[2]=espRx.buf[espRx.iR-10];
+			kp.u8[3]=espRx.buf[espRx.iR-9];
+			kd.u8[0]=espRx.buf[espRx.iR-8];
+			kd.u8[1]=espRx.buf[espRx.iR-7];
+			kd.u8[2]=espRx.buf[espRx.iR-6];
+			kd.u8[3]=espRx.buf[espRx.iR-5];
+			ki.u8[0]=espRx.buf[espRx.iR-4];
+			ki.u8[1]=espRx.buf[espRx.iR-3];
+			ki.u8[2]=espRx.buf[espRx.iR-2];
+			ki.u8[3]=espRx.buf[espRx.iR-1];
 		break;
 	}
 }
@@ -1772,8 +1914,8 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
 	  timeoutmotor--;
     }
   if(timeoutRead){
-    	  timeoutRead--;
-    }
+	  timeoutRead--;
+  }
 
   if(timeout2){
 	  timeout2--;
@@ -1782,12 +1924,22 @@ void PIT_CHANNEL_0_IRQHANDLER(void) {
 	  timeout3--;
   }
   if(timeout4){
-  	  timeout4--;
-    }
+	  timeout4--;
+  }
 
 
   if(timeoutADC){
 	  timeoutADC--;
+  }
+
+  if(timeoutADCError){
+	  timeoutADCError--;
+  }
+  if(timeoutPID){
+	  timeoutPID--;
+  }
+  if(timeoutStop){
+	  timeoutStop--;
   }
 
 

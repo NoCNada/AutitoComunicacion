@@ -206,15 +206,16 @@ typedef union {
 #define SSIDMicros flag1.bit.b5 //iniciar ESP
 #define RESETESP flag1.bit.b6 //RESET ESP
 #define DESCONECTADO flag1.bit.b7 //RESET ESP
+
 #define PrioridadRed1 flag2.bit.b0
 #define REENVIARMENSAJE flag2.bit.b1
-
 #define ALIVESENTESP flag2.bit.b2
 #define MOTORSENTESP flag2.bit.b3
 #define MOTORSOFF flag2.bit.b4
 #define TIMECONFIG flag2.bit.b5
 #define ALIVE30S flag2.bit.b6
 #define ADCSENT flag2.bit.b7
+
 #define PrimerMensaje flag3.bit.b1
 #define ReceiveMessage flag3.bit.b2
 #define EnviarADCS flag3.bit.b3
@@ -222,6 +223,11 @@ typedef union {
 #define STARTLINE flag3.bit.b5
 #define timeact	flag3.bit.b6
 #define lineant flag3.bit.b7
+
+#define negativo1 flag4.bit.b0
+#define negativo2 flag4.bit.b1
+
+
 
 #define INITESPCMD 0xC0 //Inicializar ESP
 #define MOTORSCMD 0xD0 //comando motor
@@ -235,7 +241,7 @@ typedef union {
 volatile _sFlag flag1, flag2, flag3, flag4;
 _sWork PWM1, PWM2,bufADC[9],bufADCCAL[9],PWM1BASE,PWM2BASE,AUXTOSEND[9],errorcito,kp,kd,ki;
 uint8_t statusAT = 0, readyToSend = 1, lIp = 0,statusESP,parte1 = 1,timeoutESP = 100, timeoutRead = 100, timeout3 = 0, timeout4;
-uint8_t timeoutADC = 50, timeoutADCError = 3, timeoutPID = 3, timeoutStop = 30;
+uint8_t timeoutADC = 50, timeoutADCError = 3, timeoutPID = 1, timeoutStop = 30;
 uint16_t timeout2 = 0, timeoutPrueba = 2, timeoutmotor = 0, timemotor = 150;
 char espIP[20],CIPSEND_NBYTES[30];
 uint8_t coincidencias = 0, statusCIFSR = 0, statusDecoCIPSEND = 0,coincidencias2 = 0,statusCWQAP = 0;
@@ -320,17 +326,17 @@ int main(void) {
     }
 
 //    FTM_StopTimer(FTM0_PERIPHERAL);
-//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 3100;
-//    FTM0_PERIPHERAL->CONTROLS[1].CnV = 3999;
+//    FTM0_PERIPHERAL->CONTROLS[2].CnV = 3100;
+//    FTM0_PERIPHERAL->CONTROLS[6].CnV = 3999;
 //    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
 //
-//    Delay_ms(1000);
+//    Delay_ms(10000);
 //
 //    FTM_StopTimer(FTM0_PERIPHERAL);
-//    FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
-//    FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+//    FTM0_PERIPHERAL->CONTROLS[2].CnV = 0;
+//    FTM0_PERIPHERAL->CONTROLS[6].CnV = 0;
 //    FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
-//    Delay_ms(1000);
+//    Delay_ms(10000);
 
             /* Init output LED GPIO. */
           //  GPIO_PinInit(BOARD_LED_GPIO, BOARD_LED_GPIO_PIN, &led_config);
@@ -443,7 +449,7 @@ int main(void) {
 
     	if(!timeoutPID && STARTLINE){
     		CalcularPID(PWM1.u32,PWM2.u32);
-    		timeoutPID = 3;
+    		timeoutPID = 1;
     	}
     	if(STARTLINE && !timeoutPrueba){
     		StopLinea();
@@ -501,50 +507,87 @@ void CalcularPID(uint32_t PWM1base, uint32_t PWM2base){
 	int32_t pwm1b,pwm2b;
 
 	integral += errorcito.f;
+
+	if(integral > 1000){
+		integral = 0;
+	}
+
 	derivativo = errorcito.f - lastError;
 	cuentapid = (kp.u32 * errorcito.f) + (kd.u32 * derivativo) + (ki.u32 * integral);
 	pwm1b = PWM1base - cuentapid;
 	pwm2b = PWM2base + cuentapid;
 
-	if(pwm1b > 3999){
-		pwm1b = 3999;
-	}
-	if(pwm2b > 3100){
-		pwm2b = 3100;
-	}
-	if(pwm1b < 0){
-		pwm1b = 0;
-	}
-	if(pwm2b < 0){
-		pwm2b = 0;
-	}
-	PWM1BASE.u32 = pwm1b;
-	PWM2BASE.u32 = pwm2b;
+//	 FTM0_PERIPHERAL->CONTROLS[2].CnV = 3100;
+//	    FTM0_PERIPHERAL->CONTROLS[6].CnV = 3999;
 
 	FTM_StopTimer(FTM0_PERIPHERAL);
-	FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1BASE.u16[0]; //ES MAS LENTO
-	//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
-	FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2BASE.u16[0];
-	//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
+
+	if((pwm1b < 1000) && (pwm1b > -1000)){
+		FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[2].CnV = 0;
+	}
+
+	else if(pwm1b > 3999){
+		FTM0_PERIPHERAL->CONTROLS[2].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[3].CnV = 3999;
+	}
+	else if (pwm1b <= -1000) {
+		FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[2].CnV = PWM1base;
+	}
+	else{
+		FTM0_PERIPHERAL->CONTROLS[2].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[3].CnV = pwm1b;
+	}
+
+
+
+	if((pwm2b < 1000) && (pwm2b > -1000)){
+		FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[6].CnV = 0;
+	}
+	else if(pwm2b > 3999){
+		FTM0_PERIPHERAL->CONTROLS[6].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[1].CnV = 3999;
+	}
+	else if (pwm2b <= -1000) {
+		FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[6].CnV = PWM2base;
+	}
+	else{
+		FTM0_PERIPHERAL->CONTROLS[6].CnV = 0;
+		FTM0_PERIPHERAL->CONTROLS[1].CnV = pwm2b;
+	}
+
 	FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
+
+//	FTM_StopTimer(FTM0_PERIPHERAL);
+//	if(negativo1){
+//		FTM0_PERIPHERAL->CONTROLS[3].CnV = 0;
+//		FTM0_PERIPHERAL->CONTROLS[2].CnV = PWM1base;
+//		negativo1=0;
+//	}
+//	else{
+//		FTM0_PERIPHERAL->CONTROLS[2].CnV = 0;
+//		FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1BASE.u16[0]; //ES MAS LENTO
+//	}
+//	if(negativo2){
+//		FTM0_PERIPHERAL->CONTROLS[1].CnV = 0;
+//		FTM0_PERIPHERAL->CONTROLS[6].CnV = PWM2base;
+//		negativo2 = 0;
+//	}
+//	else{
+//		FTM0_PERIPHERAL->CONTROLS[6].CnV = 0;
+//		FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2BASE.u16[0];
+//	}
+//
+//	//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
+//
+//	//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
+//	FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
 
 	lastError = errorcito.f;
 
-//		integral+=error.f;
-//		derivativo=error.f-lastError;
-//		turn= Kp.f*error.f + Kd.f*derivativo + Ki.f*integral;
-//		pwm1=pwmBase1-turn;
-//		pwm2=pwmBase2+turn;
-//
-//		if(pwm1>200)
-//			pwm1=200;
-//		if(pwm2>200)
-//			pwm2=200;
-//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,pwm1);
-//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,0);
-//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_3,0);
-//		__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4,pwm2);
-//		lastError=error.f;
 }
 
 void CalibrarValores(void){
@@ -1531,9 +1574,9 @@ void RecibirComandoESP(uint8_t comando){
 			STARTLINE = !STARTLINE;
 			if(STARTLINE){
 				FTM_StopTimer(FTM0_PERIPHERAL);
-				FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[0]; //ES MAS LENTO
+				FTM0_PERIPHERAL->CONTROLS[3].CnV = 2500; //ES MAS LENTO
 				//FTM0_PERIPHERAL->CONTROLS[3].CnV = PWM1.u16[1]; //ES MAS LENTO
-				FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[0];
+				FTM0_PERIPHERAL->CONTROLS[1].CnV = 2500;
 				//FTM0_PERIPHERAL->CONTROLS[1].CnV = PWM2.u16[1];
 				FTM_StartTimer(FTM0_PERIPHERAL, kFTM_SystemClock);
 			}
